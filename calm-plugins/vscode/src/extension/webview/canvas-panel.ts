@@ -30,6 +30,7 @@ export class CanvasPanel {
         outputChannel: vscode.OutputChannel
     ) {
         this.log = outputChannel;
+        this.importService = new SvgImportService(outputChannel);
         const workspaceRoot =
             vscode.workspace.workspaceFolders?.[0]?.uri.fsPath ?? '';
         this.log.appendLine(
@@ -514,7 +515,7 @@ export class CanvasPanel {
         const json = await this.importService.importSvgIntoDocument(this.currentDocument);
         if (json) {
             this.log.appendLine('[CanvasPanel] Import successful, updating webview');
-            this.postMessage({ type: 'modelUpdated', json, source: 'file' });
+            this.postMessage({ type: 'modelUpdated', json, source: 'import' });
         } else {
             this.log.appendLine('[CanvasPanel] Import returned null (cancelled or failed)');
         }
