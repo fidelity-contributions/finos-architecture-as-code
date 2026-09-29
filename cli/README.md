@@ -53,6 +53,8 @@ Commands:
   validate [options]          Validate a CALM document.
   template [options]          Generate files from a CALM model using a template bundle, a single file, or a directory of templates
   docify [options]            Generate a documentation website from your CALM model using a template or template directory
+  export [options]            Bundle a CALM architecture with its OKF documentation, building blocks, and other local dependencies into a portable zip archive.
+  import [options]            Extract a CALM export zip archive while preserving its archive name and tree structure.
   init-ai [options]           Augment a git repository with AI assistance for CALM
   diff [options]              Compare two CALM documents (architectures or patterns), or the moments of a CALM timeline, and report what changed.
   timeline [options]          Synthesise an implied CALM timeline from a set of local versioned architecture files.
@@ -448,6 +450,102 @@ and
 This differs:
 {{ block-architecture render-node-type-shapes=false }}
 ```
+
+## CALM Export
+
+The `export` command bundles a CALM architecture, together with all of its discoverable
+OKF Markdown documentation, building blocks, and other local dependencies (images, docs,
+etc.), into a single portable zip archive.
+
+```shell
+% calm export --help
+Usage: calm export [options]
+
+Bundle a CALM architecture with its OKF documentation, building blocks, and other local
+dependencies into a portable zip archive.
+
+Provide --index (an OKF index.md entry point) as the starting point. The command recursively follows
+Markdown links/front matter and CALM JSON references (e.g. 'details.building-block')
+to discover every local file the architecture depends on, then bundles them into
+a zip archive alongside a manifest.json recording each file's sha256 hash.
+Archive entries are relative to the discovered files' common base directory, so
+no absolute local file paths are recorded in the zip.
+
+Options:
+  -i, --index <file>          Path to the OKF index.md entry point file. (required)
+  -o, --output <file>         Path location at which to output the zip archive. (default: "export.zip")
+  -v, --verbose                Enable verbose logging. (default: false)
+  -h, --help                   display help for command
+```
+
+```shell
+% calm export --index ./project/index.md --output ./project-bundle.zip
+```
+
+When using `--index`, explicit front-matter declarations are supported for files that
+are not linked from the Markdown body. `calm-file` may be a scalar, a comma-separated
+value, or a YAML list. Artifact entries use `path`:
+
+```yaml
+calm-file:
+  - business-context.calm.json
+  - business-context.md
+artifacts:
+  - type: business-requirements
+    path: business-requirements.md
+  - type: samples
+    path: samples/example.calm.json
+```
+
+The exporter follows each declared `calm-file` and `artifacts[].path` relative to the
+index file, then recursively follows references from the discovered files. Artifact
+paths may use any local filename extension; remote URLs and anchors are ignored.
+
+Starting from the `index.md` entry point, the command:
+
+1. Resolves the main architecture CALM JSON file (from `index.md`'s front matter, if
+   that's the entry point).
+2. Recursively follows CALM JSON references (e.g. `details.building-block`) to
+   discover every building block/supporting CALM JSON file.
+3. Recursively follows Markdown links, images, and front matter references in every
+   discovered `.md` file (and each CALM JSON file's same-named companion `.md`, if one
+   exists), guarding against circular references.
+4. Writes every discovered file into the zip archive, with entry paths relative to the
+   files' common base directory — no absolute paths from the local machine are stored.
+5. Adds a `manifest.json` to the archive listing each file's path, size, and sha256 hash.
+
+## CALM Import
+
+The `import` command extracts a ZIP archive created by `calm export`. By default, it
+creates a folder next to the archive using the archive filename without `.zip`. Use
+`--output` to choose a different parent directory; the archive name and internal tree
+are preserved beneath that directory.
+
+```shell
+% calm import --input ./project-bundle.zip
+% calm import --input ./project-bundle.zip --output ./imports
+```
+
+For example, both commands preserve this structure:
+
+```text
+project-bundle/
+├── index.md
+├── docs/
+├── building-blocks/
+└── manifest.json
+```
+
+Options:
+
+```text
+-i, --input <file>   Path to the ZIP archive to import. (required)
+-o, --output <dir>   Parent directory for the imported archive folder. Defaults to the archive directory.
+-v, --verbose        Enable verbose logging. (default: false)
+```
+
+The importer rejects absolute paths and `..` traversal entries in ZIP files before
+extracting them.
 
 ## CALM init-ai
 

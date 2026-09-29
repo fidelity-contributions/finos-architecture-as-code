@@ -87,6 +87,8 @@ export const BROWSER_COMMAND_SUPPORT: readonly BrowserCommandSupport[] = [
     { command: 'docify', status: 'unsupported', reason: `${FILESYSTEM_REASON}, and rasterises diagrams with a headless browser` },
     { command: 'init-ai', status: 'unsupported', reason: 'installs AI assistant files into the local project' },
     { command: 'init-config', status: 'unsupported', reason: 'writes the CLI configuration file on the local machine' },
+    { command: 'export', status: 'unsupported', reason: 'packages CALM documents into a zip archive on the local filesystem' },
+    { command: 'import', status: 'unsupported', reason: 'extracts a zip archive to the local filesystem' },
     { command: 'hub pull', status: 'unsupported', reason: 'reads from a CALM Hub over HTTP, which needs CORS headers on the target Hub' },
     { command: 'hub list', status: 'unsupported', reason: 'reads from a CALM Hub over HTTP, which needs CORS headers on the target Hub' },
     { command: 'hub push', status: 'unsupported', reason: 'writes to a CALM Hub; browser consumers simulate publishing instead' },

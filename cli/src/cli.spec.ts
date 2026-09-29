@@ -13,6 +13,8 @@ let validateModule: typeof import('./command-helpers/validate');
 let templateModule: typeof import('./command-helpers/template');
 let optionsModule: typeof import('./command-helpers/generate-options');
 let diffModule: typeof import('./command-helpers/diff');
+let exportModule: typeof import('./command-helpers/export');
+let importModule: typeof import('./command-helpers/import');
 let hubCommandsModule: typeof import('./command-helpers/hub-commands');
 let documentLoaderModule: typeof import('../../shared/src/document-loader/node-document-loader');
 let setupCLI: typeof import('./cli').setupCLI;
@@ -31,6 +33,8 @@ describe('CLI Commands', () => {
         templateModule = await import('./command-helpers/template');
         optionsModule = await import('./command-helpers/generate-options');
         diffModule = await import('./command-helpers/diff');
+        exportModule = await import('./command-helpers/export');
+        importModule = await import('./command-helpers/import');
         documentLoaderModule = await import('../../shared/src/document-loader/node-document-loader');
         cliConfigModule = await import('./cli-config');
         vi.spyOn(cliConfigModule, 'loadCliConfig').mockResolvedValue({});
@@ -43,6 +47,13 @@ describe('CLI Commands', () => {
         vi.spyOn(validateModule, 'checkValidateOptions').mockResolvedValue(undefined);
 
         vi.spyOn(diffModule, 'runDiffCommand').mockResolvedValue(false);
+
+        vi.spyOn(exportModule, 'runExportCommand').mockResolvedValue(undefined);
+        vi.spyOn(importModule, 'runImportCommand').mockReturnValue({
+            archivePath: 'archive.zip',
+            destinationPath: 'archive',
+            fileCount: 1,
+        });
 
         vi.spyOn(templateModule, 'getUrlToLocalFileMap').mockReturnValue(new Map());
 
@@ -746,6 +757,67 @@ describe('CLI Commands', () => {
 
             exitSpy.mockRestore();
             errorSpy.mockRestore();
+        });
+    });
+
+    describe('Export Command', () => {
+        it('should export using --index', async () => {
+            await program.parseAsync([
+                'node', 'cli.js', 'export',
+                '--index', 'index.md',
+                '--output', 'out.zip',
+                '--verbose',
+            ]);
+
+            expect(exportModule.runExportCommand).toHaveBeenCalledWith({
+                entryPath: 'index.md',
+                outputPath: 'out.zip',
+                verbose: true,
+            });
+        });
+
+        it('should require --index', async () => {
+            const exitSpy = vi.spyOn(process, 'exit').mockImplementationOnce(() => {
+                throw new Error('process.exit called');
+            });
+
+            await expect(program.parseAsync([
+                'node', 'cli.js', 'export',
+                '--output', 'out.zip',
+            ])).rejects.toThrow('process.exit called');
+            expect(exportModule.runExportCommand).not.toHaveBeenCalled();
+            expect(exitSpy).toHaveBeenCalledWith(1);
+            exitSpy.mockRestore();
+        });
+    });
+
+    describe('Import Command', () => {
+        it('passes the input archive and optional output directory', async () => {
+            await program.parseAsync([
+                'node', 'cli.js', 'import',
+                '--input', 'archive.zip',
+                '--output', 'imports',
+                '--verbose',
+            ]);
+
+            expect(importModule.runImportCommand).toHaveBeenCalledWith({
+                inputPath: 'archive.zip',
+                outputDir: 'imports',
+                verbose: true,
+            });
+        });
+
+        it('requires an input archive', async () => {
+            const exitSpy = vi.spyOn(process, 'exit').mockImplementationOnce(() => {
+                throw new Error('process.exit called');
+            });
+
+            await expect(program.parseAsync([
+                'node', 'cli.js', 'import',
+            ])).rejects.toThrow('process.exit called');
+            expect(importModule.runImportCommand).not.toHaveBeenCalled();
+            expect(exitSpy).toHaveBeenCalledWith(1);
+            exitSpy.mockRestore();
         });
     });
 

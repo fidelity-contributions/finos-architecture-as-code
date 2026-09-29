@@ -80,3 +80,4 @@ test-results/
 conferences/qcon/scenario*/infrastructure/
 conferences/qcon/scenario*/generated/
 conferences/qcon/scenario*/generated-*/
+/cli/export-okf-md

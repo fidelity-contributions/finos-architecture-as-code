@@ -302,6 +302,44 @@ Validation requires:
             await docifier.docify();
         });
 
+    program
+        .command('export')
+        .description('Bundle a CALM architecture with its OKF documentation, building blocks, and other local dependencies into a portable zip archive.')
+        .addHelpText('after', `
+
+Provide --index (an OKF index.md entry point) as the starting point. The command recursively follows
+Markdown links/front matter and CALM JSON references (e.g. 'details.building-block')
+to discover every local file the architecture depends on, then bundles them into
+a zip archive alongside a manifest.json recording each file's sha256 hash.
+Archive entries are relative to the discovered files' common base directory, so
+no absolute local file paths are recorded in the zip.`)
+        .requiredOption('-i, --index <file>', 'Path to the OKF index.md entry point file.')
+        .requiredOption(OUTPUT_OPTION, 'Path location at which to output the zip archive.', 'export.zip')
+        .option(VERBOSE_OPTION, 'Enable verbose logging.', false)
+        .action(async (options) => {
+            const { runExportCommand } = await import('./command-helpers/export');
+            await runExportCommand({
+                entryPath: options.index,
+                outputPath: options.output,
+                verbose: !!options.verbose,
+            });
+        });
+
+    program
+        .command('import')
+        .description('Extract an export zip archive into a directory that preserves the archive name and tree structure.')
+        .requiredOption('-i, --input <file>', 'Path to the zip archive to import.')
+        .option('-o, --output <dir>', 'Parent directory for the imported archive folder. Defaults to the archive directory.')
+        .option(VERBOSE_OPTION, 'Enable verbose logging.', false)
+        .action(async (options) => {
+            const { runImportCommand } = await import('./command-helpers/import');
+            await runImportCommand({
+                inputPath: options.input,
+                outputDir: options.output,
+                verbose: !!options.verbose,
+            });
+        });
+
     const providerOption = new Option(AI_PROVIDER_OPTION, 'AI provider to initialize')
         .choices(AI_PROVIDER_CHOICES);
 
