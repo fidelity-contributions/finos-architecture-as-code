@@ -311,4 +311,9 @@ describe('CalmNode', () => {
         expect(node.toCanonicalSchema().adrs).toEqual(['finos:adrs:use-oauth2@1']);
         expect(node.toSchema()).toBe(schema);
     });
+
+    it('leaves adrs out of the canonical model when the node has none', () => {
+        const node = CalmNode.fromSchema({ 'unique-id': 'n', 'node-type': 'service', name: 'N', description: 'N' });
+        expect(Object.keys(node.toCanonicalSchema())).not.toContain('adrs');
+    });
 });

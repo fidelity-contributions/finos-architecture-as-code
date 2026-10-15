@@ -76,7 +76,8 @@ export class CalmNode implements CalmAdaptable<CalmNodeSchema, CalmNodeCanonical
             interfaces: this.interfaces ? this.interfaces.map(i => i.toCanonicalSchema()) : undefined,
             controls: this.controls ? this.controls.toCanonicalSchema() : undefined,
             metadata: this.metadata ? this.metadata.toCanonicalSchema() : undefined,
-            adrs: this.adrs,
+            // An absent key keeps templates that iterate node properties unchanged for nodes without ADRs.
+            ...(this.adrs !== undefined ? { adrs: this.adrs } : {}),
             additionalProperties: this.additionalProperties || undefined
         };
     }

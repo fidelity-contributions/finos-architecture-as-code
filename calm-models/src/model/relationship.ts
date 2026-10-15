@@ -37,7 +37,7 @@ implements CalmAdaptable<CalmRelationshipSchema, CalmRelationshipCanonicalModel>
             'controls': this.controls ? this.controls.toCanonicalSchema() : undefined,
             'description': this.description,
             'protocol': this.protocol,
-            'adrs': this.adrs,
+            ...(this.adrs !== undefined ? { 'adrs': this.adrs } : {}),
             ...this.additionalProperties
         };
     }
