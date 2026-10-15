@@ -6,7 +6,7 @@
  * `scripts/check-browser-entry.mjs` enforces this on every test run. Node-only code lives
  * behind the root entry (`index.ts`) and is never imported from here.
  */
-export { validate } from './commands/validate/validate-core.js';
+export { validate, validateAdr } from './commands/validate/validate-core.js';
 export {
     formatOutput,
     formatOutput as getFormattedOutput,

@@ -1,4 +1,4 @@
-export { validate } from './validate-core.js';
+export { validate, validateAdr } from './validate-core.js';
 
 // Re-export the shared helpers from their new home so existing importers/tests keep working.
 export {

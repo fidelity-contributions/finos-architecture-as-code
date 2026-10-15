@@ -21,10 +21,11 @@ import { emptyRuleResult, RuleResult, ValidationContext, ValidationPhase, Valida
  *    failure records an error but does NOT abort subsequent phases.
  *  - pattern-only: compile the pattern to prove it is a valid schema (no instance validation).
  *  - timeline: compile the timeline schema and validate the timeline (compile errors propagate).
+ *  - adr: compile the ADR meta-schema and validate the ADR (compile errors propagate).
  */
 export class JsonSchemaValidationRule implements ValidationRule {
     readonly id = 'json-schema';
-    readonly description = 'Validate the document against its JSON Schema (pattern / core / timeline)';
+    readonly description = 'Validate the document against its JSON Schema (pattern / core / timeline / ADR)';
     readonly phase = ValidationPhase.STRUCTURAL;
 
     appliesTo(): boolean {
@@ -42,6 +43,8 @@ export class JsonSchemaValidationRule implements ValidationRule {
             return this.runPatternOnly(context);
         case 'timeline':
             return this.runTimeline(context, logger);
+        case 'adr':
+            return this.runDocumentAgainstSchema(context.adr!, 'adr', context, logger);
         }
     }
 
@@ -133,16 +136,20 @@ export class JsonSchemaValidationRule implements ValidationRule {
     }
 
     private async runTimeline(context: ValidationContext, logger: Logger): Promise<RuleResult> {
+        return this.runDocumentAgainstSchema(context.timeline!, 'timeline', context, logger);
+    }
+
+    private async runDocumentAgainstSchema(document: object, source: string, context: ValidationContext, logger: Logger): Promise<RuleResult> {
         // A compile failure here intentionally propagates (matches the historical timeline flow).
         const jsonSchemaValidator = new JsonSchemaValidator(context.schemaDirectory!, context.pattern!, context.debug);
         await jsonSchemaValidator.initialize();
 
-        const schemaErrors = jsonSchemaValidator.validate(context.timeline!);
+        const schemaErrors = jsonSchemaValidator.validate(document);
         if (schemaErrors.length > 0) {
             logger.debug(`JSON Schema validation raw output: ${prettifyJson(schemaErrors)}`);
             return {
                 ...emptyRuleResult(),
-                jsonSchemaOutputs: convertJsonSchemaIssuesToValidationOutputs(schemaErrors, 'timeline'),
+                jsonSchemaOutputs: convertJsonSchemaIssuesToValidationOutputs(schemaErrors, source),
                 hasErrors: true
             };
         }

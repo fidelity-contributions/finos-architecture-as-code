@@ -26,6 +26,36 @@ export async function loadTimeline(timelinePath: string, docLoader: DocumentLoad
     return { timeline, pattern: await loadPatternFromDocumentIfPresent(timeline, timelinePath, docLoader, schemaDirectory, logger) };
 }
 
+/**
+ * Loads an ADR and the `adr.json` meta-schema that its `$schema` names.
+ * The meta-schema is resolved through the schema directory, like the CALM meta-schemas.
+ * @throws Error when the ADR has no `$schema`, or when the schema directory cannot resolve it.
+ */
+export async function loadAdr(adrPath: string, docLoader: DocumentLoader, schemaDirectory: SchemaDirectory, logger: Logger): Promise<{ adr: object, schema: object }> {
+    const adr = await docLoader.loadMissingDocument(adrPath, 'adr');
+    logger.debug(`Loaded ADR from ${adrPath}`);
+
+    const schemaId = (adr as { $schema?: unknown }).$schema;
+    if (typeof schemaId !== 'string' || schemaId === '') {
+        throw new Error(`The ADR ${adrPath} has no $schema. Set $schema to the adr.json meta-schema of a CALM schema release that includes ADRs.`);
+    }
+
+    const schemaRef = resolveSchemaRef(schemaId, adrPath, logger);
+    let schema: object | undefined;
+    try {
+        schema = await schemaDirectory.getSchema(schemaRef);
+    } catch (error) {
+        logger.debug(`Could not load ADR schema ${schemaRef}: ${error instanceof Error ? error.message : String(error)}`);
+    }
+    if (!schema) {
+        throw new Error(
+            `The ADR schema '${schemaId}' is not available in this CALM schema release. ` +
+            'Use a CALM schema release that includes adr.json, or a schema directory (--schema-directory) that contains it.'
+        );
+    }
+    return { adr, schema };
+}
+
 export function resolveSchemaRef(schemaRef: string, architecturePath: string, logger: Logger): string {
     // If it's an absolute URL (http, https, file) or calm: protocol, use as-is
     if (schemaRef.startsWith('file://') || CALM_HUB_PROTOS.some(p => schemaRef.startsWith(p))) {

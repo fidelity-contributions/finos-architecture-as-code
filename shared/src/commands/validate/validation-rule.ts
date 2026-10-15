@@ -5,13 +5,14 @@ import type { ValidationEngine } from './validation-engine.js';
 
 /**
  * The input combination determines which rules apply. It mirrors the four historical dispatch
- * branches of `validate()`.
+ * branches of `validate()`, plus ADR validation through `validateAdr()`.
  */
 export type ValidationMode =
     | 'architecture-with-pattern'
     | 'architecture-only'
     | 'pattern-only'
-    | 'timeline';
+    | 'timeline'
+    | 'adr';
 
 /**
  * Coarse ordering of validation phases. Rules run in ascending phase order; within a phase,
@@ -57,6 +58,7 @@ export interface ValidationContext {
     architecture?: object;
     pattern?: object;
     timeline?: object;
+    adr?: object;
     mode: ValidationMode;
     schemaDirectory?: SchemaDirectory;
     /**

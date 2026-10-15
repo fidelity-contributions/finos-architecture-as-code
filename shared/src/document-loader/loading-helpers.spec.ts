@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { resolveSchemaRef, loadArchitectureAndPattern, loadArchitecture, loadPattern, loadPatternFromDocumentIfPresent } from './loading-helpers';
+import { resolveSchemaRef, loadArchitectureAndPattern, loadArchitecture, loadPattern, loadPatternFromDocumentIfPresent, loadAdr } from './loading-helpers';
 import { DocumentLoader } from './document-loader';
 import { SchemaDirectory } from '../schema-directory';
 import { createMockLogger } from '../test/test-utils';
@@ -106,6 +106,46 @@ describe('loading helpers', () => {
             const result = await loadPattern('path/to/pattern.json', mockDocLoader, mockLogger);
             expect(mockDocLoader.loadMissingDocument).toHaveBeenCalledWith('path/to/pattern.json', 'pattern');
             expect(result).toBe(pattern);
+        });
+    });
+
+    describe('loadAdr', () => {
+        const ADR_SCHEMA_ID = 'https://calm.finos.org/draft/adr-support/meta/adr.json';
+
+        it('should load the ADR and the meta-schema that its $schema names', async () => {
+            const adr = { $schema: ADR_SCHEMA_ID, title: 'An ADR' };
+            const schema = { $id: ADR_SCHEMA_ID };
+            vi.mocked(mockDocLoader.loadMissingDocument).mockResolvedValue(adr);
+            vi.mocked(mockSchemaDirectory.getSchema).mockResolvedValue(schema);
+
+            const result = await loadAdr('adr.json', mockDocLoader, mockSchemaDirectory, mockLogger);
+
+            expect(mockDocLoader.loadMissingDocument).toHaveBeenCalledWith('adr.json', 'adr');
+            expect(mockSchemaDirectory.getSchema).toHaveBeenCalledWith(ADR_SCHEMA_ID);
+            expect(result).toEqual({ adr, schema });
+        });
+
+        it('should fail when the ADR has no $schema', async () => {
+            vi.mocked(mockDocLoader.loadMissingDocument).mockResolvedValue({ title: 'An ADR' });
+
+            await expect(loadAdr('adr.json', mockDocLoader, mockSchemaDirectory, mockLogger))
+                .rejects.toThrow('The ADR adr.json has no $schema');
+        });
+
+        it('should fail with a clear message when the schema directory does not have the ADR schema', async () => {
+            vi.mocked(mockDocLoader.loadMissingDocument).mockResolvedValue({ $schema: ADR_SCHEMA_ID });
+            vi.mocked(mockSchemaDirectory.getSchema).mockResolvedValue(undefined);
+
+            await expect(loadAdr('adr.json', mockDocLoader, mockSchemaDirectory, mockLogger))
+                .rejects.toThrow(`The ADR schema '${ADR_SCHEMA_ID}' is not available in this CALM schema release`);
+        });
+
+        it('should fail with a clear message when the schema directory cannot load the ADR schema', async () => {
+            vi.mocked(mockDocLoader.loadMissingDocument).mockResolvedValue({ $schema: ADR_SCHEMA_ID });
+            vi.mocked(mockSchemaDirectory.getSchema).mockRejectedValue(new Error('404'));
+
+            await expect(loadAdr('adr.json', mockDocLoader, mockSchemaDirectory, mockLogger))
+                .rejects.toThrow(/not available in this CALM schema release/);
         });
     });
 

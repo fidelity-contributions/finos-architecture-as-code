@@ -11,6 +11,7 @@ registerOutputFormatter('junit', junitFormatter);
 
 export {
     validate,
+    validateAdr,
     formatOutput as getFormattedOutput,
     ValidationFormattingOptions,
     ValidationDocumentContext,

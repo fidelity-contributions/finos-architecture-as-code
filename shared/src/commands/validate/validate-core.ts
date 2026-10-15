@@ -56,6 +56,28 @@ export async function validate(
 }
 
 /**
+ * Validates a CALM Architecture Decision Record against the CALM `adr.json` meta-schema and the
+ * ADR Spectral ruleset.
+ *
+ * @param adr The ADR as a JS object, in `adr.json` (kebab-case) format
+ * @param adrSchema The `adr.json` meta-schema that the ADR's `$schema` names
+ * @param schemaDirectory SchemaDirectory instance for schema resolution
+ * @param debug Whether to log at debug level
+ * @returns Validation report
+ */
+export async function validateAdr(
+    adr: object,
+    adrSchema: object,
+    schemaDirectory: SchemaDirectory,
+    debug: boolean = false
+): Promise<ValidationOutcome> {
+    logger = initLogger(debug, 'calm-validate');
+    const engine = createDefaultValidationEngine();
+    const references = new CachingTrackingResolver(new SchemaDirectoryReferenceResolver(schemaDirectory));
+    return engine.validate({ mode: 'adr', adr, pattern: adrSchema, schemaDirectory, references, debug, engine });
+}
+
+/**
  * Resolve the input combination to a mode + context, preserving the historical caller-error
  * throws for invalid combinations.
  */

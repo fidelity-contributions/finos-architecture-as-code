@@ -108,6 +108,7 @@ classDiagram
         +architecture?: object
         +pattern?: object
         +timeline?: object
+        +adr?: object
         +schemaDirectory?: SchemaDirectory
         +references: CachingTrackingResolver
         +debug: boolean
@@ -146,8 +147,8 @@ Rules fall into two families; all implement the same `ValidationRule` interface 
 class).
 
 - **Spectral-backed**: `SpectralValidationRule` adapts a Spectral `RulesetDefinition` (raw-JSON /
-  JSONPath rules). Three are registered: `spectral-pattern`, `spectral-architecture`,
-  `spectral-timeline`. Custom checks such as `idsAreUnique`, `nodeIdExists`,
+  JSONPath rules). Four are registered: `spectral-pattern`, `spectral-architecture`,
+  `spectral-timeline` and `spectral-adr`. Custom checks such as `idsAreUnique`, `nodeIdExists`,
   `interfaceIdExistsOnNode`, `sequenceNumbersAreUnique` are Spectral custom functions over JSONPath.
 - **Model/schema-backed**: reason over the parsed `CalmCore` model or an AJV schema:
   `JsonSchemaValidationRule` (STRUCTURAL, AJV), `ControlsValidationRule` (SEMANTIC, via
@@ -266,7 +267,8 @@ flowchart TD
 ```
 
 - **LINT: Spectral (`SpectralValidationRule`).** Runs the `rules-pattern`, `rules-architecture`
-  and `rules-timeline` rulesets. Custom checks such as `idsAreUnique`, `nodeIdExists`,
+  and `rules-timeline` rulesets. ADR validation (`validateAdr()`, mode `adr`) runs only `rules-adr`
+  and the JSON Schema rule. Custom checks such as `idsAreUnique`, `nodeIdExists`,
   `interfaceIdExistsOnNode`, `sequenceNumbersAreUnique` are Spectral custom functions over JSONPath.
 - **STRUCTURAL: JSON Schema (`JsonSchemaValidationRule`).** Compiles the pattern/core schema with
   AJV (async schema loading via `SchemaDirectory`) and validates the architecture.

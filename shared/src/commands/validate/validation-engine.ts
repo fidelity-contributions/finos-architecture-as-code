@@ -1,6 +1,7 @@
 import validationRulesForPattern from '../../spectral/rules-pattern.js';
 import validationRulesForArchitecture from '../../spectral/rules-architecture.js';
 import validationRulesForTimeline from '../../spectral/rules-timeline.js';
+import validationRulesForAdr from '../../spectral/rules-adr.js';
 import { ValidationOutcome } from './validation.output.js';
 import { ValidationContext, ValidationRule } from './validation-rule.js';
 import { stripRefs } from './validation-helpers.js';
@@ -53,7 +54,7 @@ export class ValidationEngine {
 
 /**
  * Build the engine wired with the standard CALM validation rules, in phase order:
- * Spectral (pattern, architecture, timeline) -> JSON-Schema -> Controls -> Interfaces -> Node-details.
+ * Spectral (pattern, architecture, timeline, ADR) -> JSON-Schema -> Controls -> Interfaces -> Node-details.
  */
 export function createDefaultValidationEngine(): ValidationEngine {
     return new ValidationEngine([
@@ -80,6 +81,14 @@ export function createDefaultValidationEngine(): ValidationEngine {
             'timeline',
             context => (context.timeline ? stripRefs(context.timeline) : undefined),
             context => context.mode === 'timeline'
+        ),
+        new SpectralValidationRule(
+            'spectral-adr',
+            'Lint the ADR with the CALM ADR Spectral ruleset',
+            validationRulesForAdr,
+            'adr',
+            context => (context.adr ? JSON.stringify(context.adr) : undefined),
+            context => context.mode === 'adr'
         ),
         new JsonSchemaValidationRule(),
         new ControlsValidationRule(),
