@@ -1,5 +1,6 @@
 import {
     type AdrDiffResult,
+    type AdrReferenceChanges,
     type ControlDiffResult,
     diffArchitectures,
     diffPatterns,
@@ -119,6 +120,14 @@ export function formatDiff(
     if (counts.adrs.added + counts.adrs.removed > 0) {
         lines.push(`ADRs:          +${counts.adrs.added}  -${counts.adrs.removed}  =${counts.adrs.unchanged}`);
     }
+    const nodeAdrs = itemAdrChanges(diff.nodesModified.map((n) => ({ label: nodeLabel(n.original), adrs: n.adrs })));
+    const edgeAdrs = itemAdrChanges(diff.edgesModified.map((e) => ({ label: edgeLabel(e.original), adrs: e.adrs })));
+    if (nodeAdrs.added.length + nodeAdrs.removed.length > 0) {
+        lines.push(`Node ADRs:     +${nodeAdrs.added.length}  -${nodeAdrs.removed.length}`);
+    }
+    if (edgeAdrs.added.length + edgeAdrs.removed.length > 0) {
+        lines.push(`Relationship ADRs: +${edgeAdrs.added.length}  -${edgeAdrs.removed.length}`);
+    }
     if (counts.controls.added + counts.controls.removed + counts.controls.modified > 0) {
         lines.push(`Controls:      +${counts.controls.added}  -${counts.controls.removed}  ~${counts.controls.modified}`);
     }
@@ -149,10 +158,22 @@ export function formatDiff(
     const adrItems = diff.adrDiffItems ?? [];
     list('ADRs added:', adrItems.filter((item) => item.changeType === 'added').map((item) => item.content));
     list('ADRs removed:', adrItems.filter((item) => item.changeType === 'removed').map((item) => item.content));
+    list('Node ADRs added:', nodeAdrs.added);
+    list('Node ADRs removed:', nodeAdrs.removed);
+    list('Relationship ADRs added:', edgeAdrs.added);
+    list('Relationship ADRs removed:', edgeAdrs.removed);
     list('Controls added:', Object.keys(diff.controlItemsAdded ?? {}));
     list('Controls removed:', Object.keys(diff.controlItemsRemoved ?? {}));
     list('Controls modified:', Object.keys(diff.controlItemsModified ?? {}));
     return lines.join('\n');
+}
+
+/** Flattens per-item ADR reference changes to `<item>: <adr>` summary lines. */
+function itemAdrChanges(items: { label: string; adrs?: AdrReferenceChanges }[]): { added: string[]; removed: string[] } {
+    return {
+        added: items.flatMap(({ label, adrs }) => (adrs?.added ?? []).map((adr) => `${label}: ${adr}`)),
+        removed: items.flatMap(({ label, adrs }) => (adrs?.removed ?? []).map((adr) => `${label}: ${adr}`)),
+    };
 }
 
 function isObject(value: unknown): value is Record<string, unknown> {
