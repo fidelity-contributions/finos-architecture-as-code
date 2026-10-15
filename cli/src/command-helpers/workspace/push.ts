@@ -13,7 +13,9 @@ import {
 import {
     CalmHubClient,
     DocumentMetadata,
+    HubAdrWriteResult,
     HubClientError,
+    adrContentEqual,
     extractDocumentMetadata,
     isSnapshotVersion,
     hasIntegerRevisions,
@@ -35,6 +37,7 @@ import {
 } from './document-kind';
 import { findSnapshotDependencyViolations } from './snapshot';
 import { resourceTypeForDocumentType } from './document-id-type';
+import { latestAdrRevision } from '../hub-commands';
 
 const logger: Logger = initLogger(false, 'workspace');
 const DEFINITE_CREATE_REJECTION_STATUSES = new Set([400, 401, 403, 404]);
@@ -46,11 +49,14 @@ export interface PushOptions {
      *  - `true`: if the on-disk content *differs* from the published version, report the conflict
      *    and fail the push once all entries are processed (strict merge-time CI). An existing
      *    version whose content is unchanged is still skipped.
+     * ADRs have Hub-assigned revisions. Without this flag, a changed ADR gets a new revision. With
+     * it, an ADR that differs from the existing revision its `$id` declares is a conflict instead.
      */
     failIfModified?: boolean;
 }
 
 interface PushEntryContext {
+    adrConflicts: string[];
     bundlePath: string;
     client: CalmHubClient;
     conflicts: string[];
@@ -83,6 +89,7 @@ export async function pushWorkspaceToHub(
         return;
     }
 
+    const adrConflicts: string[] = [];
     const conflicts: string[] = [];
     const mappingFailures: string[] = [];
     const narrativeFailures: string[] = [];
@@ -120,6 +127,7 @@ export async function pushWorkspaceToHub(
         }
 
         await dispatchWorkspaceManifestEntry(document, PUSH_ENTRY_OPERATIONS, {
+            adrConflicts,
             bundlePath,
             client,
             conflicts,
@@ -134,7 +142,7 @@ export async function pushWorkspaceToHub(
         });
     }
 
-    if (conflicts.length > 0 || snapshotBlocked.length > 0 || mappingFailures.length > 0 || narrativeFailures.length > 0) {
+    if (conflicts.length > 0 || snapshotBlocked.length > 0 || adrConflicts.length > 0 || mappingFailures.length > 0 || narrativeFailures.length > 0) {
         const summaries: string[] = [];
         if (conflicts.length > 0) {
             summaries.push(
@@ -146,6 +154,12 @@ export async function pushWorkspaceToHub(
             summaries.push(
                 `${snapshotBlocked.length} document(s) depend on snapshot versions (${snapshotBlocked.join('; ')}). ` +
                 'Run `calm workspace release` on those dependencies first, or pin a released version.'
+            );
+        }
+        if (adrConflicts.length > 0) {
+            summaries.push(
+                `${adrConflicts.length} modified ADR(s) already exist in CalmHub at their declared revision ` +
+                `(${adrConflicts.join(', ')}). Set the revision in their $id to a new revision, or push without --fail-if-modified.`
             );
         }
         if (mappingFailures.length > 0) {
@@ -264,7 +278,8 @@ async function pushMappingEntry(
     }
     // The mapping API addresses resources by (namespace, type, mappingId, version),
     // all encoded in the document's $id. Documents without a well-formed mapping $id
-    // (or whose type has no ResourceType, e.g. adr) cannot be pushed and are skipped.
+    // cannot be pushed and are skipped.
+    // ADRs go through the name-based ADR API instead.
     let metadata: DocumentMetadata;
     try {
         metadata = extractDocumentMetadata(raw);
@@ -290,7 +305,7 @@ async function pushMappingEntry(
         return;
     }
     if (hasIntegerRevisions(resourceType)) {
-        logger.warn(`Skipping '${id}': ADRs are not pushed through the versioned mapping API.`);
+        await pushAdrEntry(entry, metadata, namespace, context);
         return;
     }
 
@@ -353,6 +368,62 @@ async function pushMappingEntry(
         const message = e instanceof Error ? e.message : String(e);
         logger.error(`Failed to push '${id}': ${message}`);
         mappingFailures.push(`${id}: ${message}`);
+    }
+}
+
+/**
+ * ADRs use the name-based ADR API, and CalmHub assigns their revisions:
+ *  - an unknown slug is created;
+ *  - content equal to the declared revision, or to the latest revision, is skipped;
+ *  - other content gets a new revision, except in strict mode when the declared revision exists.
+ * The manifest `calmHubId` records the revision that CalmHub stored.
+ */
+async function pushAdrEntry(
+    entry: MappingWorkspaceManifestEntry,
+    metadata: DocumentMetadata,
+    namespace: string,
+    context: PushEntryContext
+): Promise<void> {
+    const { adrConflicts, bundlePath, client, failIfModified, id, manifest, mappingFailures, raw } = context;
+    const { mapping: slug, version: revision } = metadata;
+    try {
+        const adr = JSON.parse(raw);
+        const revisions = await client.getAdrRevisions(namespace, slug);
+        if (revisions.length === 0) {
+            await recordAdrPush(await client.createAdr(namespace, { ...adr, slug }));
+            return;
+        }
+
+        if (revisions.includes(revision)) {
+            if (adrContentEqual(adr, await client.getAdr(namespace, slug, revision))) {
+                logger.info(`No changes for '${id}' - revision ${revision} already exists and is unchanged, skipping`);
+                return;
+            }
+            if (failIfModified) {
+                logger.error(`'${id}' revision ${revision} already exists in CalmHub but differs on disk.`);
+                adrConflicts.push(`${id}@${revision}`);
+                return;
+            }
+        }
+
+        const latestRevision = latestAdrRevision(revisions);
+        if (latestRevision !== revision && adrContentEqual(adr, await client.getAdr(namespace, slug, latestRevision))) {
+            logger.info(`No changes for '${id}' - it is equal to the latest revision ${latestRevision}, skipping`);
+            return;
+        }
+
+        await recordAdrPush(await client.updateAdr(namespace, slug, adr));
+    } catch (e) {
+        const message = e instanceof Error ? e.message : String(e);
+        logger.error(`Failed to push '${id}': ${message}`);
+        mappingFailures.push(`${id}: ${message}`);
+    }
+
+    async function recordAdrPush(written: HubAdrWriteResult): Promise<void> {
+        manifest[id] = { ...entry, calmHubId: written.location };
+        await saveManifest(bundlePath, manifest);
+        const assigned = written.revision === revision ? '' : ` (CalmHub assigned revision ${written.revision})`;
+        logger.info(`Pushed '${id}' revision ${revision} -> ${written.location}${assigned}`);
     }
 }
 

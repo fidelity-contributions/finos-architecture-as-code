@@ -564,18 +564,119 @@ describe('pushWorkspaceToHub', () => {
         expect(client.createMappedResourceVersion).not.toHaveBeenCalled();
     });
 
-    it('skips ADR documents, which have no semver version', async () => {
-        await writeFile(
-            path.join(filesPath, 'adr.json'),
-            JSON.stringify({ $id: mappingId('my-adr', '1', 'adrs'), title: 'My ADR' })
-        );
-        await saveManifest(bundlePath, {
-            'adr': { path: 'files/adr.json', type: 'adr', namespace: 'com.example' }
+    describe('ADR documents', () => {
+        const adrId = (revision: string) => mappingId('my-adr', revision, 'adrs');
+        const adrLocation = (revision: string) => `/calm/namespaces/com.example/adrs/my-adr/versions/${revision}`;
+        const adr = (revision: string, status = 'accepted') => ({
+            $id: adrId(revision),
+            title: 'My ADR',
+            status,
+            'context-and-problem-statement': 'Context',
         });
-        const client = makeClient();
-        await pushWorkspaceToHub(bundlePath, client);
-        expect(client.getMappedResourceVersions).not.toHaveBeenCalled();
-        expect(client.createMappedResourceVersion).not.toHaveBeenCalled();
+        const adrClient = (overrides: Record<string, unknown> = {}) => ({
+            ...makeClient(),
+            getAdrRevisions: vi.fn(async () => [] as string[]),
+            getAdr: vi.fn(async () => ({})),
+            createAdr: vi.fn(async () => ({ slug: 'my-adr', revision: '1', location: adrLocation('1') })),
+            updateAdr: vi.fn(async () => ({ slug: 'my-adr', revision: '3', location: adrLocation('3') })),
+            ...overrides,
+        }) as unknown as CalmHubClient & Record<'getAdrRevisions' | 'getAdr' | 'createAdr' | 'updateAdr', ReturnType<typeof vi.fn>>;
+
+        async function writeAdr(document: object): Promise<void> {
+            await writeFile(path.join(filesPath, 'adr.json'), JSON.stringify(document));
+            await saveManifest(bundlePath, {
+                'adr': { path: 'files/adr.json', type: 'adr', namespace: 'com.example' }
+            });
+        }
+
+        it('creates an ADR whose slug is unknown in the namespace, and records the location', async () => {
+            await writeAdr(adr('1'));
+            const client = adrClient();
+
+            await pushWorkspaceToHub(bundlePath, client);
+
+            expect(client.getAdrRevisions).toHaveBeenCalledWith('com.example', 'my-adr');
+            expect(client.createAdr).toHaveBeenCalledWith('com.example', { ...adr('1'), slug: 'my-adr' });
+            expect(client.getMappedResourceVersions).not.toHaveBeenCalled();
+            expect((await loadManifest(bundlePath))['adr'].calmHubId).toBe(adrLocation('1'));
+        });
+
+        it('skips an ADR whose declared revision exists with the same content', async () => {
+            await writeAdr(adr('2'));
+            const client = adrClient({
+                getAdrRevisions: vi.fn(async () => ['1', '2']),
+                getAdr: vi.fn(async () => ({ ...adr('2'), slug: 'my-adr', 'decision-drivers': [] })),
+            });
+
+            await pushWorkspaceToHub(bundlePath, client);
+
+            expect(client.getAdr).toHaveBeenCalledWith('com.example', 'my-adr', '2');
+            expect(client.updateAdr).not.toHaveBeenCalled();
+            expect(client.createAdr).not.toHaveBeenCalled();
+            expect((await loadManifest(bundlePath))['adr'].calmHubId).toBeUndefined();
+        });
+
+        it('adds a revision when the declared revision exists with different content', async () => {
+            await writeAdr(adr('2', 'superseded'));
+            const client = adrClient({
+                getAdrRevisions: vi.fn(async () => ['1', '2']),
+                getAdr: vi.fn(async () => adr('2')),
+            });
+
+            await pushWorkspaceToHub(bundlePath, client);
+
+            expect(client.updateAdr).toHaveBeenCalledWith('com.example', 'my-adr', adr('2', 'superseded'));
+            expect((await loadManifest(bundlePath))['adr'].calmHubId).toBe(adrLocation('3'));
+        });
+
+        it('skips an ADR that is equal to the latest revision, so a repeat push is idempotent', async () => {
+            await writeAdr(adr('2', 'superseded'));
+            const client = adrClient({
+                getAdrRevisions: vi.fn(async () => ['1', '2', '3']),
+                getAdr: vi.fn(async (_ns: string, _slug: string, revision: string) =>
+                    revision === '3' ? adr('3', 'superseded') : adr(revision)),
+            });
+
+            await pushWorkspaceToHub(bundlePath, client);
+
+            expect(client.getAdr).toHaveBeenCalledWith('com.example', 'my-adr', '3');
+            expect(client.updateAdr).not.toHaveBeenCalled();
+        });
+
+        it('adds a revision when the declared revision is new', async () => {
+            await writeAdr(adr('3', 'superseded'));
+            const client = adrClient({
+                getAdrRevisions: vi.fn(async () => ['1', '2']),
+                getAdr: vi.fn(async () => adr('2')),
+            });
+
+            await pushWorkspaceToHub(bundlePath, client, { failIfModified: true });
+
+            expect(client.updateAdr).toHaveBeenCalledWith('com.example', 'my-adr', adr('3', 'superseded'));
+            expect((await loadManifest(bundlePath))['adr'].calmHubId).toBe(adrLocation('3'));
+        });
+
+        it('reports a conflict in strict mode when the declared revision exists with different content', async () => {
+            await writeAdr(adr('2', 'superseded'));
+            const client = adrClient({
+                getAdrRevisions: vi.fn(async () => ['1', '2']),
+                getAdr: vi.fn(async () => adr('2')),
+            });
+
+            await expect(pushWorkspaceToHub(bundlePath, client, { failIfModified: true }))
+                .rejects.toThrow(/1 modified ADR\(s\) already exist in CalmHub at their declared revision \(adr@2\)/);
+            expect(client.updateAdr).not.toHaveBeenCalled();
+        });
+
+        it('reports a failure when CalmHub rejects the ADR', async () => {
+            await writeAdr(adr('1'));
+            const client = adrClient({
+                createAdr: vi.fn(async () => { throw new HubClientError(400, 'chosen-option names no considered option', 'POST'); }),
+            });
+
+            await expect(pushWorkspaceToHub(bundlePath, client)).rejects.toThrow(/1 mapping document\(s\) failed \(adr: /);
+            expect((await loadManifest(bundlePath))['adr'].calmHubId).toBeUndefined();
+        });
     });
 
     it('pushes a flow to its CalmHub flows mapping', async () => {

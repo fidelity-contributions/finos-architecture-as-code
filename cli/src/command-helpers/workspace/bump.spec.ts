@@ -894,6 +894,26 @@ describe('bump', () => {
             expect(await read('y.json')).toEqual(yDoc);
         });
 
+        it('repoints an ADR reference to a bumped doc but does not bump the ADR', async () => {
+            await write('a.json', { $id: idAt('a', '1.0.0'), title: 'A', extra: 'edited' });
+            const adrDoc = { $schema: idAt('a', '1.0.0'), $id: idAt('my-adr', '1', 'adrs'), title: 'My ADR' };
+            await write('adr.json', adrDoc);
+            await saveManifest(bundlePath, {
+                'a': { path: 'files/a.json', type: 'architecture' },
+                'adr': { path: 'files/adr.json', type: 'adr' },
+            });
+            const client = makeClient({
+                versions: { a: ['1.0.0'] },
+                remote: { 'a@1.0.0': { $id: idAt('a', '1.0.0'), title: 'A' } },
+            });
+
+            const result = await bumpWorkspace(bundlePath, client, { increment: 'MINOR' });
+
+            expect(result.bumped.map(b => b.id)).toEqual(['a']);
+            expect((await read('adr.json')).$id).toBe(idAt('my-adr', '1', 'adrs'));
+            expect((await read('adr.json')).$schema).toBe(idAt('a', '1.1.0'));
+        });
+
         it('cascades through a three-level chain in one call', async () => {
             // A → B → C: changing A should cascade-bump B and C
             await write('a.json', { $id: idAt('a', '1.0.0'), title: 'A', extra: 'edited' });

@@ -984,6 +984,12 @@ For each tracked document, push looks up the existing versions in CalmHub:
 
 A changed `-SNAPSHOT` version is overwritten regardless of `--fail-if-modified` — CalmHub treats it as mutable. An unchanged snapshot is skipped. Push also refuses to publish a non-snapshot document that references a `-SNAPSHOT` version, of a tracked document or pinned in the ref; run `workspace release` on that dependency first, or pin a released version.
 
+ADRs (`$id` type `adrs`) use the CalmHub ADR API. CalmHub assigns their revisions, so `bump` and `check` skip them:
+- **Slug not in the namespace** → creates the ADR.
+- **Content equal to the declared revision, or to the latest revision** → skips it.
+- **Content changed** → adds a revision. CalmHub assigns the revision number, which can differ from the one in the `$id`. The manifest `calmHubId` records the stored revision.
+- With `push.failIfModified: true`, an ADR that differs from an existing declared revision is a conflict and is not pushed. Set the revision in its `$id` to a new revision to publish it.
+
 ```shell
 calm workspace push                              # URL from ~/.calm.json
 calm workspace push --calm-hub-url https://calmhub.example.com

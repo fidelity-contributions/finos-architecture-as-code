@@ -20,6 +20,7 @@ import {
     canonicalEqual,
     isSnapshotVersion,
     toSnapshotVersion,
+    hasIntegerRevisions,
     initLogger,
     Logger,
 } from '@finos/calm-shared';
@@ -244,6 +245,9 @@ function prepareChangedMappingEntry(
         return undefined;
     }
     if (isSnapshotVersion(metadata.version)) return undefined; // mutable; push overwrites, no bump needed
+    if (hasIntegerRevisions(metadata.type)) {
+        return undefined;
+    }
 
     return async () => {
         let versions: string[];
@@ -410,6 +414,12 @@ export async function bumpWorkspace(
 
             if (isSnapshotVersion(metadata.version)) {
                 // Already mutable; bumping would strip the suffix and promote it to a release.
+                bumpedIds.add(candidate.docId);
+                continue;
+            }
+
+            if (hasIntegerRevisions(metadata.type)) {
+                logger.warn(`'${candidate.docId}' references ${triggerLabel} (updated) but it is an ADR, whose revisions CalmHub assigns; version not bumped.`);
                 bumpedIds.add(candidate.docId);
                 continue;
             }
