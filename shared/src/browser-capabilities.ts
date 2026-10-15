@@ -36,6 +36,7 @@ export const BROWSER_COMMAND_SUPPORT: readonly BrowserCommandSupport[] = [
             { flags: '-p, --pattern <file>', description: 'Path to the pattern file to use. May be a file path or a URL.', supported: true },
             { flags: '-a, --architecture <file>', description: 'Path to the architecture file to use. May be a file path or a URL.', supported: true },
             { flags: '--timeline <file>', description: 'Path to the timeline file to validate. May be a file path or a URL.', supported: false },
+            { flags: '--adr <file>', description: 'Path to the Architecture Decision Record (ADR) file to validate. May be a file path or a URL.', supported: false },
             { flags: '-s, --schema-directory <path>', description: 'Path to the directory containing the meta schemas to use.', supported: false },
             { flags: '-c, --calm-hub-url <url>', description: 'URL to CALMHub instance', supported: false },
             { flags: '--assets-path <path>', description: 'Local path to CALM assets directory for resolving CURIEs without a Hub', supported: false },
