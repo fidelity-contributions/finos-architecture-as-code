@@ -887,6 +887,39 @@ describe('CLI Commands', () => {
         });
     });
 
+    describe('ADR hub commands', () => {
+        beforeEach(async () => {
+            hubCommandsModule = await import('./command-helpers/hub-commands');
+            vi.spyOn(hubCommandsModule, 'runListAdrs').mockResolvedValue(undefined);
+            vi.spyOn(hubCommandsModule, 'runPullAdr').mockResolvedValue(undefined);
+            vi.spyOn(hubCommandsModule, 'runPushAdr').mockResolvedValue(undefined);
+        });
+
+        it('lists ADRs in a namespace', async () => {
+            await program.parseAsync(['node', 'cli.js', 'hub', 'list', 'adrs', '--namespace', 'finos', '--calm-hub-url', 'http://hub', '-f', 'pretty']);
+
+            expect(hubCommandsModule.runListAdrs).toHaveBeenCalledWith({
+                calmHubOptions: { calmHubUrl: 'http://hub' }, namespace: 'finos', format: 'pretty'
+            });
+        });
+
+        it('pulls an ADR revision by slug', async () => {
+            await program.parseAsync(['node', 'cli.js', 'hub', 'pull', 'adr', '--namespace', 'finos', '-m', 'use-oauth2', '--ver', '2', '-o', 'adr.json']);
+
+            expect(hubCommandsModule.runPullAdr).toHaveBeenCalledWith({
+                calmHubOptions: { calmHubUrl: undefined }, namespace: 'finos', slug: 'use-oauth2', revision: '2', output: 'adr.json'
+            });
+        });
+
+        it('pushes an ADR file', async () => {
+            await program.parseAsync(['node', 'cli.js', 'hub', 'push', 'adr', 'adr.json', '--namespace', 'finos']);
+
+            expect(hubCommandsModule.runPushAdr).toHaveBeenCalledWith({
+                calmHubOptions: { calmHubUrl: undefined }, file: 'adr.json', namespace: 'finos', format: 'json'
+            });
+        });
+    });
+
     describe('list architectures command', () => {
         beforeEach(async () => {
             hubCommandsModule = await import('./command-helpers/hub-commands');

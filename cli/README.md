@@ -756,22 +756,41 @@ calm hub push control-configuration ./controls/encryption-at-rest.config.json
 
 The local document is normalised the same way CalmHub stores it before comparing content, so a version-only or defaulted-field difference between disk and CalmHub is not mistaken for a real change.
 
+#### Pushing an ADR
+
+`calm hub push adr <file>` pushes an Architecture Decision Record in the CALM `adr.json` format. CalmHub assigns ADR revisions (`1`, `2`, ...), so the options above for versions do not apply.
+
+| Option | Description |
+|--------|-------------|
+| `--namespace <namespace>` | Target namespace. Overrides the namespace in the ADR's CalmHub `$id`. Required when the ADR has no CalmHub `$id`. |
+| `-c, --calm-hub-url <url>` | CalmHub instance to push to. |
+| `-f, --format <format>` | Output format: `json` (default) or `pretty`. |
+
+- If the ADR has no `slug` (and no CalmHub `$id`), or its slug is new in the namespace, the push creates the ADR. CalmHub uses the `slug`, or makes one from the `title`.
+- If the slug exists, the push adds a revision. If the ADR is equal to the latest revision, the push does nothing.
+- After a push, the CLI writes the `$id` and `slug` that CalmHub assigned to the file.
+- The push fails before it contacts CalmHub if `decision-outcome.chosen-option` is not the `name` of a `considered-options` entry.
+
+```shell
+calm hub push adr ./adrs/use-oauth2.json --namespace finos
+```
+
 ### `calm hub pull`
 
 Pulls a specific (or latest) version of a resource from CalmHub.
 
 ```
-calm hub pull <architecture|pattern|standard|interface|flow|timeline|control-requirement|control-configuration> [options]
+calm hub pull <architecture|pattern|standard|interface|flow|timeline|adr|control-requirement|control-configuration> [options]
 ```
 
 | Option | Applies to | Description |
 |--------|------------|-------------|
-| `--namespace <namespace>` | `architecture`, `pattern`, `standard`, `interface`, `flow`, `timeline` (required) | Source namespace. |
-| `-m, --mapping <mapping>` | `architecture`, `pattern`, `standard`, `interface`, `flow`, `timeline` (required) | Mapping slug of the document to pull. |
+| `--namespace <namespace>` | `architecture`, `pattern`, `standard`, `interface`, `flow`, `timeline`, `adr` (required) | Source namespace. |
+| `-m, --mapping <mapping>` | `architecture`, `pattern`, `standard`, `interface`, `flow`, `timeline`, `adr` (required) | Mapping slug of the document to pull. For an ADR, the ADR slug. |
 | `--domain <domain>` | `control-requirement`, `control-configuration` (required) | Source domain. |
 | `--control-name <controlName>` | `control-requirement`, `control-configuration` (required) | Control name. |
 | `--config-name <configName>` | `control-configuration` (required) | Configuration name. |
-| `--ver <version>` | all | Version to retrieve (defaults to the latest). |
+| `--ver <version>` | all | Version to retrieve (defaults to the latest). For an ADR, the revision number. |
 | `-c, --calm-hub-url <url>` | all | CalmHub instance to pull from. |
 | `-o, --output <file>` | all | Write output to this file instead of stdout. |
 
@@ -780,6 +799,7 @@ calm hub pull architecture --namespace com.example --mapping payment-service --v
 calm hub pull interface --namespace com.example --mapping payment-api
 calm hub pull flow --namespace com.example --mapping payment-processing --ver 1.0.0
 calm hub pull timeline --namespace com.example --mapping roadmap --ver 1.0.0
+calm hub pull adr --namespace finos --mapping use-oauth2 --ver 2 -o ./adrs/use-oauth2.json
 calm hub pull control-configuration --domain security --control-name encryption-at-rest --config-name default
 ```
 
@@ -788,12 +808,12 @@ calm hub pull control-configuration --domain security --control-name encryption-
 Lists resources of a given kind.
 
 ```
-calm hub list <architectures|patterns|standards|interfaces|flows|timelines|namespaces|domains|controls|control-configurations> [options]
+calm hub list <architectures|patterns|standards|interfaces|flows|timelines|adrs|namespaces|domains|controls|control-configurations> [options]
 ```
 
 | Option | Applies to | Description |
 |--------|------------|-------------|
-| `--namespace <namespace>` | `architectures`, `patterns`, `standards`, `interfaces`, `flows`, `timelines` | Target namespace (default: `"default"`). |
+| `--namespace <namespace>` | `architectures`, `patterns`, `standards`, `interfaces`, `flows`, `timelines`, `adrs` | Target namespace (default: `"default"`). |
 | `--domain <domain>` | `controls` (required), `control-configurations` (required) | Target domain. |
 | `--control-name <controlName>` | `control-configurations` (required) | Control name. |
 | `-c, --calm-hub-url <url>` | all | CalmHub instance. |
@@ -804,6 +824,7 @@ calm hub list architectures --namespace com.example
 calm hub list interfaces --namespace com.example
 calm hub list flows --namespace com.example
 calm hub list timelines --namespace com.example
+calm hub list adrs --namespace finos
 calm hub list namespaces
 calm hub list control-configurations --domain security --control-name encryption-at-rest
 ```

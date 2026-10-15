@@ -1,5 +1,6 @@
 import { readFile, writeFile } from 'fs/promises';
-import { CalmHubClient, CalmHubOptions, HubClientError, HubDomainSummary, HubControlSummary, HubDomainCreateResult, DocumentMetadata, extractDocumentMetadata, computeSemVerBump, sortSemVer, latestReleaseVersion, isSnapshotVersion, toReleaseVersion, toSnapshotVersion, ResourceChangeType, ResourceType, updateDocumentMetadata, constructDocumentId, constructControlDocumentId, ControlDocumentMetadata, ControlDocumentKind, extractControlMetadata, updateControlDocumentMetadata, canonicalEqual } from '@finos/calm-shared';
+import { CalmHubClient, CalmHubOptions, HubClientError, HubDomainSummary, HubControlSummary, HubDomainCreateResult, DocumentMetadata, extractDocumentMetadata, computeSemVerBump, sortSemVer, latestReleaseVersion, isSnapshotVersion, toReleaseVersion, toSnapshotVersion, ResourceChangeType, ResourceType, updateDocumentMetadata, constructDocumentId, constructControlDocumentId, ControlDocumentMetadata, ControlDocumentKind, extractControlMetadata, updateControlDocumentMetadata, canonicalEqual, HubAdrDocument, fromAdrDocument, adrContentEqual } from '@finos/calm-shared';
+import type { CalmAdrDocumentSchema } from '@finos/calm-models/types';
 import { OutputFormat, parseOutputFormat, printError, printJsonSuccess, printTableSuccess } from './hub-output';
 import * as cliConfig from '../cli-config';
 
@@ -1117,4 +1118,202 @@ function handleHubError(err: unknown, format: OutputFormat): never {
         printError(0, err instanceof Error ? err.message : String(err), 'unknown', format);
     }
     process.exit(1);
+}
+
+// ── ADRs ──────────────────────────────────────────────────────────────────────
+
+export interface ListAdrsOptions {
+    calmHubOptions: CalmHubOptions;
+    namespace: string;
+    format?: string;
+}
+
+/**
+ * Lists the slugs of the ADRs in a namespace.
+ * @param options Command options.
+ */
+export async function runListAdrs(options: ListAdrsOptions): Promise<void> {
+    const format: OutputFormat = parseOutputFormat(options.format);
+    const calmHubOptions = await handleOptionsLoadError(options.calmHubOptions, format);
+    const client = new CalmHubClient(calmHubOptions);
+
+    try {
+        const slugs = await client.listAdrs(options.namespace);
+        if (format === 'pretty') {
+            printTableSuccess(slugs.map(slug => ({ SLUG: slug })), [{ key: 'SLUG', header: 'SLUG' }]);
+        } else {
+            printJsonSuccess(slugs);
+        }
+    } catch (err) {
+        handleHubError(err, format);
+    }
+}
+
+export interface PullAdrOptions {
+    calmHubOptions: CalmHubOptions;
+    namespace: string;
+    slug: string;
+    revision?: string;
+    output?: string;
+}
+
+/**
+ * Pulls an ADR in `adr.json` format and writes it to stdout or a file.
+ * @param options Command options.
+ */
+export async function runPullAdr(options: PullAdrOptions): Promise<void> {
+    const calmHubOptions = await handleOptionsLoadError(options.calmHubOptions);
+    const client = new CalmHubClient(calmHubOptions);
+
+    console.error(`Pulling ADR from CALM Hub with namespace=${options.namespace}, slug=${options.slug}, revision=${options.revision ?? 'latest'}`);
+
+    try {
+        const adr = await client.getAdr(options.namespace, options.slug, options.revision);
+        const pretty = JSON.stringify(adr, null, 2);
+        if (options.output) {
+            await writeFile(options.output, pretty, 'utf-8');
+        } else {
+            console.log(pretty);
+        }
+    } catch (err) {
+        handleHubError(err, 'json');
+    }
+}
+
+export interface PushAdrOptions {
+    calmHubOptions: CalmHubOptions;
+    file: string;
+    /** Overrides the namespace in the document's `$id`. */
+    namespace?: string;
+    format?: string;
+}
+
+export interface AdrPushResult {
+    status: PushAction;
+    namespace: string;
+    slug: string;
+    revision: string;
+    location: string;
+}
+
+function printAdrPushResult(result: AdrPushResult, format: OutputFormat): void {
+    if (format === 'pretty') {
+        printTableSuccess(
+            [{ STATUS: result.status === 'created' ? 'Created' : 'Unchanged', SLUG: result.slug, REVISION: result.revision, LOCATION: result.location }],
+            [
+                { key: 'STATUS', header: 'STATUS' },
+                { key: 'SLUG', header: 'SLUG' },
+                { key: 'REVISION', header: 'REVISION' },
+                { key: 'LOCATION', header: 'LOCATION' }
+            ]
+        );
+    } else {
+        printJsonSuccess(result);
+    }
+}
+
+/** The namespace and slug that an ADR's CALM Hub `$id` names, if it has one. */
+function adrIdentityFromId(adr: HubAdrDocument): { namespace?: string; slug?: string } {
+    if (typeof adr.$id !== 'string') {
+        return {};
+    }
+    try {
+        const metadata = extractDocumentMetadata(JSON.stringify(adr));
+        return metadata.type === 'adrs' ? { namespace: metadata.namespace, slug: metadata.mapping } : {};
+    } catch {
+        return {};
+    }
+}
+
+function absoluteAdrLocation(location: string, calmHubUrl: string | undefined): string {
+    if (/^https?:\/\//.test(location) || !calmHubUrl) {
+        return location;
+    }
+    return `${calmHubUrl.replace(/\/+$/, '')}${location.startsWith('/') ? '' : '/'}${location}`;
+}
+
+/**
+ * Pushes an ADR to CALM Hub.
+ * Creates the ADR when it has no slug or its slug is not in the namespace; otherwise adds a revision.
+ * An ADR that is equal to the latest revision is not pushed again.
+ * After a push, the `$id` and `slug` of the file are set to the revision that CALM Hub stored.
+ * @param options Command options.
+ */
+export async function runPushAdr(options: PushAdrOptions): Promise<void> {
+    const format: OutputFormat = parseOutputFormat(options.format);
+    const calmHubOptions = await handleOptionsLoadError(options.calmHubOptions, format);
+    const client = new CalmHubClient(calmHubOptions);
+
+    const requestedCommand = `push adr ${options.file}`;
+    const fileContent = validateAndMinifyJSON(await loadFileContent(options.file, requestedCommand, format), options.file, requestedCommand, format);
+    const adr = JSON.parse(fileContent) as HubAdrDocument;
+    if (!adr || typeof adr !== 'object' || Array.isArray(adr)) {
+        printError(0, `File is not a JSON object: ${options.file}`, requestedCommand, format);
+        process.exit(1);
+    }
+
+    const fromId = adrIdentityFromId(adr);
+    const namespace = options.namespace ?? fromId.namespace;
+    if (!namespace) {
+        printError(0, `No namespace for ${options.file}. Use --namespace, or give the ADR a CALM Hub $id.`, requestedCommand, format);
+        process.exit(1);
+    }
+    const requestedSlug = typeof adr.slug === 'string' && adr.slug !== '' ? adr.slug : fromId.slug;
+
+    try {
+        fromAdrDocument(adr as unknown as CalmAdrDocumentSchema);
+    } catch (err) {
+        printError(0, err instanceof Error ? err.message : String(err), requestedCommand, format);
+        process.exit(1);
+    }
+
+    try {
+        const revisions = requestedSlug ? await client.getAdrRevisions(namespace, requestedSlug) : [];
+        let result: AdrPushResult;
+        if (requestedSlug && revisions.length > 0) {
+            const latestRevision = latestAdrRevision(revisions);
+            const latest = await client.getAdr(namespace, requestedSlug, latestRevision);
+            if (adrContentEqual(adr, latest)) {
+                result = {
+                    status: 'skipped',
+                    namespace,
+                    slug: requestedSlug,
+                    revision: latestRevision,
+                    location: typeof latest.$id === 'string' ? latest.$id : absoluteAdrLocation(`/calm/namespaces/${namespace}/adrs/${requestedSlug}/versions/${latestRevision}`, calmHubOptions.calmHubUrl)
+                };
+                printAdrPushResult(result, format);
+                return;
+            }
+            const written = await client.updateAdr(namespace, requestedSlug, adr);
+            result = { status: 'created', namespace, slug: written.slug, revision: written.revision, location: absoluteAdrLocation(written.location, calmHubOptions.calmHubUrl) };
+        } else {
+            const written = await client.createAdr(namespace, requestedSlug ? { ...adr, slug: requestedSlug } : adr);
+            result = { status: 'created', namespace, slug: written.slug, revision: written.revision, location: absoluteAdrLocation(written.location, calmHubOptions.calmHubUrl) };
+        }
+
+        await writeFile(options.file, JSON.stringify(withAdrIdentity(adr, result), null, 2), 'utf-8');
+        printAdrPushResult(result, format);
+    } catch (err) {
+        handleHubError(err, format);
+    }
+}
+
+/** Puts `$id` and `slug` after `$schema`, so a new `$id` does not go to the end of the file. */
+function withAdrIdentity(adr: HubAdrDocument, result: AdrPushResult): Record<string, unknown> {
+    const { $schema, ...rest } = adr;
+    const updated: Record<string, unknown> = { ...($schema === undefined ? {} : { $schema }), $id: result.location, slug: result.slug, ...rest };
+    updated.$id = result.location;
+    updated.slug = result.slug;
+    return updated;
+}
+
+/**
+ * The highest revision. ADR revisions are integers, so they are compared as numbers.
+ * Other revision IDs (e.g. commit SHAs in GitHub storage mode) keep the ascending order that CALM Hub returns.
+ */
+export function latestAdrRevision(revisions: string[]): string {
+    const ordered = revisions.every(revision => /^\d+$/.test(revision))
+        ? [...revisions].sort((a, b) => Number(a) - Number(b))
+        : revisions;
+    return ordered[ordered.length - 1];
 }

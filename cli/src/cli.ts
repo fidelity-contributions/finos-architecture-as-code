@@ -47,6 +47,9 @@ import {
     runListControls,
     runListControlConfigurations,
     ListOptions,
+    runListAdrs,
+    runPullAdr,
+    runPushAdr,
 } from './command-helpers/hub-commands';
 import type { ResourceChangeType } from '@finos/calm-shared';
 
@@ -682,6 +685,21 @@ Example:
         });
 
     // hub pull
+    hubPushCmd
+        .command('adr <adr-file>')
+        .description('Push an Architecture Decision Record (ADR) in adr.json format to CALM Hub. Creates the ADR when it has no slug or its slug is new in the namespace; otherwise adds a revision. Writes the $id and slug that CALM Hub assigned back to the file.')
+        .option(NAMESPACE_OPTION, 'Target namespace; overrides the namespace in the ADR $id.')
+        .option(CALMHUB_URL_OPTION, 'URL to CALMHub instance')
+        .addOption(hubOutputOption)
+        .action(async (adrFile, options) => {
+            await runPushAdr({
+                calmHubOptions: { calmHubUrl: options.calmHubUrl },
+                file: adrFile,
+                namespace: options.namespace,
+                format: options.format
+            });
+        });
+
     const hubPullCmd = hubCmd.command('pull').description('Pull a CALM document from CALM Hub');
 
     hubPullCmd
@@ -838,6 +856,24 @@ Example:
             await runPullControlConfiguration(pullOptions);
         });
 
+    hubPullCmd
+        .command('adr')
+        .description('Pull a revision of an Architecture Decision Record (ADR) from CALM Hub in adr.json format')
+        .requiredOption(NAMESPACE_OPTION, 'Source namespace')
+        .requiredOption(MAPPING_OPTION, 'Slug of the ADR to pull')
+        .option(HUB_VERSION_OPTION, 'Revision to retrieve (defaults to the latest)')
+        .option(CALMHUB_URL_OPTION, 'URL to CALMHub instance')
+        .option(OUTPUT_OPTION, 'Write output to this file instead of stdout')
+        .action(async (options) => {
+            await runPullAdr({
+                calmHubOptions: { calmHubUrl: options.calmHubUrl },
+                namespace: options.namespace,
+                slug: options.mapping,
+                revision: options.ver,
+                output: options.output
+            });
+        });
+
     // hub list
     const hubListCmd = hubCmd.command('list').description('List CALM Hub resources');
 
@@ -942,6 +978,20 @@ Example:
                 format: options.format
             };
             await runListTimelines(listTimelinesOptions);
+        });
+
+    hubListCmd
+        .command('adrs')
+        .description('List the slugs of the Architecture Decision Records (ADRs) in a namespace')
+        .option(NAMESPACE_OPTION, 'Target namespace', 'default')
+        .option(CALMHUB_URL_OPTION, 'URL to CALMHub instance')
+        .addOption(hubOutputOption)
+        .action(async (options) => {
+            await runListAdrs({
+                calmHubOptions: { calmHubUrl: options.calmHubUrl },
+                namespace: options.namespace,
+                format: options.format
+            });
         });
 
     hubListCmd

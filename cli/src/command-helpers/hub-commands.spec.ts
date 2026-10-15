@@ -11,7 +11,8 @@ import { runCreateNamespace, runListArchitectures, runListNamespaces,
     runListControlConfigurations,
     runPushInterface, runPullInterface, runListInterfaces,
     runPushFlow, runPullFlow, runListFlows,
-    runPushTimeline, runPullTimeline, runListTimelines } from './hub-commands';
+    runPushTimeline, runPullTimeline, runListTimelines,
+    runListAdrs, runPullAdr, runPushAdr, latestAdrRevision } from './hub-commands';
 
 // We stub the @finos/calm-shared HTTP client so no real HTTP is made, but keep the
 // real (pure) document-id-utils helpers that orchestratePush relies on.
@@ -36,7 +37,12 @@ vi.mock('@finos/calm-shared', async () => {
         createControlRequirementVersion: vi.fn(),
         getControlConfigurationVersions: vi.fn(),
         getControlConfigurationVersion: vi.fn(),
-        createControlConfigurationVersion: vi.fn()
+        createControlConfigurationVersion: vi.fn(),
+        listAdrs: vi.fn(),
+        getAdrRevisions: vi.fn(),
+        getAdr: vi.fn(),
+        createAdr: vi.fn(),
+        updateAdr: vi.fn()
     };
     return {
         // Keep all the real (pure) helpers — document-id-utils, semver and canonical — that
@@ -2373,4 +2379,193 @@ describe('hub-commands', () => {
         });
     });
 
+
+    // ── ADRs ───────────────────────────────────────────────────────────────
+
+    describe('ADR commands', () => {
+        const HUB = 'http://hub';
+        const location = (slug: string, revision: string) => `/calm/namespaces/finos/adrs/${slug}/versions/${revision}`;
+        const adr = {
+            $schema: 'https://calm.finos.org/draft/adr-support/meta/adr.json',
+            title: 'Use OAuth2',
+            status: 'accepted',
+            'context-and-problem-statement': 'We need delegated authorisation.',
+            'considered-options': [{ name: 'OAuth2', description: 'Use OAuth2.' }],
+            'decision-outcome': { 'chosen-option': 'OAuth2', rationale: 'Standard.' }
+        };
+        const readAdr = (document: object) => vi.mocked(fs.readFile).mockResolvedValue(JSON.stringify(document) as unknown as Uint8Array);
+        const writtenFile = () => JSON.parse(vi.mocked(fs.writeFile).mock.calls[0][1] as string);
+
+        describe('runListAdrs', () => {
+            it('prints the ADR slugs as JSON', async () => {
+                const { mockClient } = await getSharedMocks();
+                vi.mocked(mockClient.listAdrs).mockResolvedValue(['use-oauth2', 'use-kafka']);
+
+                await runListAdrs({ calmHubOptions: { calmHubUrl: HUB }, namespace: 'finos' });
+
+                expect(mockClient.listAdrs).toHaveBeenCalledWith('finos');
+                expect(hubOutput.printJsonSuccess).toHaveBeenCalledWith(['use-oauth2', 'use-kafka']);
+            });
+
+            it('renders a SLUG table when format is pretty', async () => {
+                const { mockClient } = await getSharedMocks();
+                vi.mocked(mockClient.listAdrs).mockResolvedValue(['use-oauth2']);
+
+                await runListAdrs({ calmHubOptions: { calmHubUrl: HUB }, namespace: 'finos', format: 'pretty' });
+
+                expect(hubOutput.printTableSuccess).toHaveBeenCalledWith([{ SLUG: 'use-oauth2' }], [{ key: 'SLUG', header: 'SLUG' }]);
+            });
+
+            it('exits on HubClientError', async () => {
+                const { mockClient, shared } = await getSharedMocks();
+                vi.mocked(mockClient.listAdrs).mockRejectedValue(new shared.HubClientError(404, 'Namespace not found', 'GET /calm/namespaces/nope/adrs'));
+
+                await expect(runListAdrs({ calmHubOptions: { calmHubUrl: HUB }, namespace: 'nope' })).rejects.toThrow('process.exit');
+                expect(hubOutput.printError).toHaveBeenCalledWith(404, 'Namespace not found', expect.any(String), 'json');
+            });
+        });
+
+        describe('runPullAdr', () => {
+            it('pulls the latest revision to stdout', async () => {
+                const { mockClient } = await getSharedMocks();
+                vi.mocked(mockClient.getAdr).mockResolvedValue({ ...adr, slug: 'use-oauth2' });
+                const consoleSpy = vi.spyOn(console, 'log').mockImplementation(function () { return undefined; });
+                vi.spyOn(console, 'error').mockImplementation(function () { return undefined; });
+
+                await runPullAdr({ calmHubOptions: { calmHubUrl: HUB }, namespace: 'finos', slug: 'use-oauth2' });
+
+                expect(mockClient.getAdr).toHaveBeenCalledWith('finos', 'use-oauth2', undefined);
+                expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('"chosen-option": "OAuth2"'));
+                consoleSpy.mockRestore();
+            });
+
+            it('writes a specific revision to a file', async () => {
+                const { mockClient } = await getSharedMocks();
+                vi.mocked(mockClient.getAdr).mockResolvedValue(adr);
+                vi.spyOn(console, 'error').mockImplementation(function () { return undefined; });
+
+                await runPullAdr({ calmHubOptions: { calmHubUrl: HUB }, namespace: 'finos', slug: 'use-oauth2', revision: '2', output: 'adr.json' });
+
+                expect(mockClient.getAdr).toHaveBeenCalledWith('finos', 'use-oauth2', '2');
+                expect(fs.writeFile).toHaveBeenCalledWith('adr.json', JSON.stringify(adr, null, 2), 'utf-8');
+            });
+
+            it('exits on HubClientError', async () => {
+                const { mockClient, shared } = await getSharedMocks();
+                vi.mocked(mockClient.getAdr).mockRejectedValue(new shared.HubClientError(404, 'ADR not found', 'GET /calm/namespaces/finos/adrs/nope'));
+                vi.spyOn(console, 'error').mockImplementation(function () { return undefined; });
+
+                await expect(runPullAdr({ calmHubOptions: { calmHubUrl: HUB }, namespace: 'finos', slug: 'nope' })).rejects.toThrow('process.exit');
+                expect(hubOutput.printError).toHaveBeenCalledWith(404, 'ADR not found', expect.any(String), 'json');
+            });
+        });
+
+        describe('runPushAdr', () => {
+            it('creates an ADR that has no slug, and writes the assigned $id and slug to the file', async () => {
+                const { mockClient } = await getSharedMocks();
+                readAdr(adr);
+                vi.mocked(mockClient.createAdr).mockResolvedValue({ slug: 'use-oauth2', revision: '1', location: location('use-oauth2', '1') });
+
+                await runPushAdr({ calmHubOptions: { calmHubUrl: HUB }, file: 'adr.json', namespace: 'finos' });
+
+                expect(mockClient.getAdrRevisions).not.toHaveBeenCalled();
+                expect(mockClient.createAdr).toHaveBeenCalledWith('finos', adr);
+                const written = writtenFile();
+                expect(Object.keys(written).slice(0, 3)).toEqual(['$schema', '$id', 'slug']);
+                expect(written).toMatchObject({ $id: `${HUB}${location('use-oauth2', '1')}`, slug: 'use-oauth2', title: 'Use OAuth2' });
+                expect(hubOutput.printJsonSuccess).toHaveBeenCalledWith({
+                    status: 'created', namespace: 'finos', slug: 'use-oauth2', revision: '1', location: `${HUB}${location('use-oauth2', '1')}`
+                });
+            });
+
+            it('creates an ADR with the requested slug when the slug is new in the namespace', async () => {
+                const { mockClient } = await getSharedMocks();
+                readAdr({ ...adr, slug: 'oauth' });
+                vi.mocked(mockClient.getAdrRevisions).mockResolvedValue([]);
+                vi.mocked(mockClient.createAdr).mockResolvedValue({ slug: 'oauth', revision: '1', location: `https://hub.example.com${location('oauth', '1')}` });
+
+                await runPushAdr({ calmHubOptions: { calmHubUrl: HUB }, file: 'adr.json', namespace: 'finos', format: 'pretty' });
+
+                expect(mockClient.getAdrRevisions).toHaveBeenCalledWith('finos', 'oauth');
+                expect(mockClient.createAdr).toHaveBeenCalledWith('finos', expect.objectContaining({ slug: 'oauth' }));
+                expect(writtenFile().$id).toBe(`https://hub.example.com${location('oauth', '1')}`);
+                expect(hubOutput.printTableSuccess).toHaveBeenCalledWith(
+                    [{ STATUS: 'Created', SLUG: 'oauth', REVISION: '1', LOCATION: `https://hub.example.com${location('oauth', '1')}` }],
+                    expect.any(Array)
+                );
+            });
+
+            it('adds a revision when the slug exists and the content changed, taking the namespace and slug from the $id', async () => {
+                const { mockClient } = await getSharedMocks();
+                readAdr({ $id: `${HUB}${location('use-oauth2', '2')}`, ...adr, status: 'superseded' });
+                vi.mocked(mockClient.getAdrRevisions).mockResolvedValue(['1', '2', '10']);
+                vi.mocked(mockClient.getAdr).mockResolvedValue({ ...adr, $id: `${HUB}${location('use-oauth2', '10')}`, slug: 'use-oauth2' });
+                vi.mocked(mockClient.updateAdr).mockResolvedValue({ slug: 'use-oauth2', revision: '11', location: location('use-oauth2', '11') });
+
+                await runPushAdr({ calmHubOptions: { calmHubUrl: HUB }, file: 'adr.json' });
+
+                expect(mockClient.getAdr).toHaveBeenCalledWith('finos', 'use-oauth2', '10');
+                expect(mockClient.updateAdr).toHaveBeenCalledWith('finos', 'use-oauth2', expect.objectContaining({ status: 'superseded' }));
+                expect(mockClient.createAdr).not.toHaveBeenCalled();
+                expect(writtenFile()).toMatchObject({ $id: `${HUB}${location('use-oauth2', '11')}`, slug: 'use-oauth2' });
+            });
+
+            it('skips an ADR that is equal to the latest revision', async () => {
+                const { mockClient } = await getSharedMocks();
+                readAdr({ ...adr, slug: 'use-oauth2' });
+                vi.mocked(mockClient.getAdrRevisions).mockResolvedValue(['1']);
+                vi.mocked(mockClient.getAdr).mockResolvedValue({ ...adr, $id: `${HUB}${location('use-oauth2', '1')}`, slug: 'use-oauth2', 'decision-drivers': [] });
+
+                await runPushAdr({ calmHubOptions: { calmHubUrl: HUB }, file: 'adr.json', namespace: 'finos' });
+
+                expect(mockClient.updateAdr).not.toHaveBeenCalled();
+                expect(fs.writeFile).not.toHaveBeenCalled();
+                expect(hubOutput.printJsonSuccess).toHaveBeenCalledWith(expect.objectContaining({ status: 'skipped', revision: '1', location: `${HUB}${location('use-oauth2', '1')}` }));
+            });
+
+            it('fails without a namespace', async () => {
+                readAdr(adr);
+
+                await expect(runPushAdr({ calmHubOptions: { calmHubUrl: HUB }, file: 'adr.json' })).rejects.toThrow('process.exit');
+                expect(hubOutput.printError).toHaveBeenCalledWith(0, expect.stringContaining('No namespace'), 'push adr adr.json', 'json');
+            });
+
+            it('fails before contacting CALM Hub when chosen-option names no considered option', async () => {
+                const { mockClient } = await getSharedMocks();
+                readAdr({ ...adr, 'decision-outcome': { 'chosen-option': 'mTLS', rationale: 'r' } });
+
+                await expect(runPushAdr({ calmHubOptions: { calmHubUrl: HUB }, file: 'adr.json', namespace: 'finos' })).rejects.toThrow('process.exit');
+                expect(hubOutput.printError).toHaveBeenCalledWith(0, expect.stringContaining('chosen-option \'mTLS\''), 'push adr adr.json', 'json');
+                expect(mockClient.createAdr).not.toHaveBeenCalled();
+            });
+
+            it('fails when the file is not a JSON object', async () => {
+                vi.mocked(fs.readFile).mockResolvedValue('[]' as unknown as Uint8Array);
+
+                await expect(runPushAdr({ calmHubOptions: { calmHubUrl: HUB }, file: 'adr.json', namespace: 'finos' })).rejects.toThrow('process.exit');
+                expect(hubOutput.printError).toHaveBeenCalledWith(0, 'File is not a JSON object: adr.json', 'push adr adr.json', 'json');
+            });
+
+            it('exits on HubClientError, e.g. a slug conflict', async () => {
+                const { mockClient, shared } = await getSharedMocks();
+                readAdr({ ...adr, slug: 'taken' });
+                vi.mocked(mockClient.getAdrRevisions).mockResolvedValue([]);
+                vi.mocked(mockClient.createAdr).mockRejectedValue(new shared.HubClientError(409, 'Slug taken', 'POST /calm/namespaces/finos/adrs'));
+
+                await expect(runPushAdr({ calmHubOptions: { calmHubUrl: HUB }, file: 'adr.json', namespace: 'finos' })).rejects.toThrow('process.exit');
+                expect(hubOutput.printError).toHaveBeenCalledWith(409, 'Slug taken', expect.any(String), 'json');
+                expect(fs.writeFile).not.toHaveBeenCalled();
+            });
+        });
+
+        describe('latestAdrRevision', () => {
+            it('compares integer revisions as numbers', () => {
+                expect(latestAdrRevision(['1', '10', '2'])).toBe('10');
+            });
+
+            it('keeps the CALM Hub order for other revision IDs', () => {
+                expect(latestAdrRevision(['b2c', 'a1f'])).toBe('a1f');
+            });
+        });
+    });
 });
