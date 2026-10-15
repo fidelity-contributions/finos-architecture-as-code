@@ -128,7 +128,7 @@ export {
     SNAPSHOT_SUFFIX
 } from './hub/semver.js';
 export { canonicalEqual, canonicalize } from './hub/canonical.js';
-export { toAdrDocument, fromAdrDocument, adrMetaToAdrDocument, type CalmAdrContent } from './view-model/adr.js';
+export { toAdrDocument, fromAdrDocument, adrMetaToAdrDocument, adrContentEqual, type CalmAdrContent } from './view-model/adr.js';
 export {
     isCurie,
     parseCurie,

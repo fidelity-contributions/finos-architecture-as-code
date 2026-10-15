@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { adrMetaToAdrDocument, fromAdrDocument, toAdrDocument } from './adr';
+import { adrContentEqual, adrMetaToAdrDocument, fromAdrDocument, toAdrDocument } from './adr';
 import type { CalmAdrDocumentSchema, CalmAdrSchema } from '@finos/calm-models/types';
 
 const fullDocument: CalmAdrDocumentSchema = {
@@ -133,5 +133,28 @@ describe('ADR kebab-case <-> camelCase adapter', () => {
 
         expect(document.slug).toBe('use-oauth2');
         expect(document.title).toBe('Use OAuth2');
+    });
+});
+
+describe('adrContentEqual', () => {
+    it('ignores identity fields, key order, null values and empty arrays', () => {
+        const local = { $schema: 'https://calm.finos.org/draft/adr-support/meta/adr.json', 'unique-id': 'local', ...fullDocument };
+        const remote = {
+            links: fullDocument.links,
+            ...fullDocument,
+            $id: 'https://hub/calm/namespaces/finos/adrs/use-oauth2/versions/3',
+            slug: 'use-oauth2',
+            requesters: fullDocument.requesters,
+            'decision-drivers': fullDocument['decision-drivers'],
+            supersedes: null,
+            tags: [],
+        };
+
+        expect(adrContentEqual(local, remote)).toBe(true);
+    });
+
+    it('detects a change in authored content', () => {
+        expect(adrContentEqual(fullDocument, { ...fullDocument, status: 'superseded' })).toBe(false);
+        expect(adrContentEqual(fullDocument, { ...fullDocument, 'decision-drivers': ['Security', 'Cost'] })).toBe(false);
     });
 });

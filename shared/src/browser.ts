@@ -94,6 +94,6 @@ export {
     type GitHubResourceDirectory,
     type GitHubContentClassification,
 } from './hub/github-layout.js';
-export { toAdrDocument, fromAdrDocument, adrMetaToAdrDocument, type CalmAdrContent } from './view-model/adr.js';
+export { toAdrDocument, fromAdrDocument, adrMetaToAdrDocument, adrContentEqual, type CalmAdrContent } from './view-model/adr.js';
 export { BROWSER_COMMAND_SUPPORT, browserSupportFor, type BrowserCommandSupport, type BrowserOptionSupport } from './browser-capabilities.js';
 export { mergeControls } from './controls/merge-controls.js';

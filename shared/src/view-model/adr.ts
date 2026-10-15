@@ -8,6 +8,7 @@ import {
     CalmAdrDocumentSchema,
     CalmAdrDocumentOptionSchema,
 } from '@finos/calm-models/types';
+import { canonicalEqual } from '../hub/canonical.js';
 
 export class CalmAdrMeta {
     constructor(
@@ -191,4 +192,38 @@ function setIfNotEmpty(target: object, key: string, values: unknown[] | undefine
     if (values && values.length > 0) {
         (target as Record<string, unknown>)[key] = values;
     }
+}
+
+const ADR_IDENTITY_FIELDS = ['$schema', '$id', 'slug', 'unique-id'];
+
+/**
+ * Whether two `adr.json` documents have the same authored content.
+ * Ignores the identity fields that CALM Hub assigns or ignores (`$schema`, `$id`, `slug`, `unique-id`),
+ * and treats null values and empty arrays as absent, because the Hub model cannot tell them apart.
+ */
+export function adrContentEqual(a: object, b: object): boolean {
+    return canonicalEqual(adrContent(a), adrContent(b));
+}
+
+function adrContent(document: object): unknown {
+    const content = { ...(document as Record<string, unknown>) };
+    for (const field of ADR_IDENTITY_FIELDS) {
+        delete content[field];
+    }
+    return withoutEmptyValues(content);
+}
+
+function withoutEmptyValues(value: unknown): unknown {
+    if (Array.isArray(value)) {
+        return value.map(withoutEmptyValues);
+    }
+    if (value && typeof value === 'object') {
+        const result: Record<string, unknown> = {};
+        for (const [key, entry] of Object.entries(value)) {
+            if (entry === null || entry === undefined || (Array.isArray(entry) && entry.length === 0)) continue;
+            result[key] = withoutEmptyValues(entry);
+        }
+        return result;
+    }
+    return value;
 }
