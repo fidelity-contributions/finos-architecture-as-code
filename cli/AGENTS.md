@@ -49,7 +49,7 @@ npm run copy-workspace-templates # Copy `workspace new` templates from src/comma
 
 ### Key Commands
 1. **generate** - Generate architecture from CALM pattern
-2. **validate** - Validate a CALM document (architecture, pattern, and/or timeline) against schemas
+2. **validate** - Validate a CALM document (architecture, pattern, and/or timeline, or an ADR with `--adr`) against schemas
 3. **init-ai** - Install AI Assistant support for CALM
 4. **template** - Generate files from Handlebars templates
 5. **docify** - Generate documentation websites (supports `--scaffold` for two-stage workflow)

@@ -1,0 +1,49 @@
+{
+  "$schema": "https://calm.finos.org/draft/adr-support/meta/adr.json",
+  "slug": "accept-plain-http-for-legacy-ledger",
+  "title": "Accept plain HTTP for the legacy ledger link",
+  "decision-date": "2026-10-01",
+  "requesters": [
+    "payments-team"
+  ],
+  "approvers": [
+    "architecture-review-board"
+  ],
+  "context-and-problem-statement": "The legacy ledger does not support TLS. The encryption-in-transit control cannot be met until the ledger is replaced.",
+  "decision-drivers": [
+    "Ledger replacement is scheduled for Q2",
+    "Traffic stays inside an isolated network segment"
+  ],
+  "considered-options": [
+    {
+      "name": "Accept plain HTTP until replacement",
+      "description": "Record a temporary deviation and isolate the network segment.",
+      "positive-consequences": [
+        "No change to the legacy system"
+      ],
+      "negative-consequences": [
+        "Traffic is not encrypted"
+      ]
+    },
+    {
+      "name": "Add a TLS-terminating sidecar",
+      "description": "Put a proxy in front of the ledger.",
+      "positive-consequences": [
+        "Control is met"
+      ],
+      "negative-consequences": [
+        "Ledger vendor does not support the change"
+      ]
+    }
+  ],
+  "decision-outcome": {
+    "chosen-option": "Accept plain HTTP until replacement",
+    "rationale": "The risk is low inside the isolated segment, and the ledger is replaced in Q2."
+  },
+  "links": [
+    {
+      "rel": "justifies",
+      "href": "adr-architecture.json#ledger-link/encryption-in-transit"
+    }
+  ]
+}

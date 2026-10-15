@@ -55,6 +55,7 @@ const ARCHITECTURE_OPTION = '-a, --architecture <file>';
 const OUTPUT_OPTION = '-o, --output <file>';
 const SCHEMAS_OPTION = '-s, --schema-directory <path>';
 const TIMELINE_OPTION = '--timeline <file>';
+const ADR_OPTION = '--adr <file>';
 const VERBOSE_OPTION = '-v, --verbose';
 
 // Generate command options
@@ -129,10 +130,13 @@ Validation requires:
   - an architecture:             to validate against CALM schema
   - an architecture and pattern: to validate the architecture against the CALM pattern
   - a pattern:                   to validate the pattern against CALM schema
-  - a timeline:                  to validate the timeline against CALM timeline schema`)
+  - a timeline:                  to validate the timeline against CALM timeline schema
+  - an ADR:                      to validate the ADR against the CALM ADR schema that its $schema names
+                                 (needs a CALM schema release that includes adr.json)`)
         .option(PATTERN_OPTION, 'Path to the pattern file to use. May be a file path or a URL.')
         .option(ARCHITECTURE_OPTION, 'Path to the architecture file to use. May be a file path or a URL.')
         .option(TIMELINE_OPTION, 'Path to the timeline file to validate. May be a file path or a URL.')
+        .option(ADR_OPTION, 'Path to the Architecture Decision Record (ADR) file to validate. May be a file path or a URL.')
         .option(SCHEMAS_OPTION, 'Path to the directory containing the meta schemas to use.', CALM_META_SCHEMA_DIRECTORY)
         .option(CALMHUB_URL_OPTION, 'URL to CALMHub instance')
         .option(ASSETS_PATH_OPTION, 'Local path to CALM assets directory for resolving CURIEs without a Hub')
@@ -147,11 +151,12 @@ Validation requires:
         .option(VERBOSE_OPTION, 'Enable verbose logging.', false)
         .action(async (options) => {
             const { checkValidateOptions, runValidate } = await import('./command-helpers/validate');
-            checkValidateOptions(program, options, PATTERN_OPTION, ARCHITECTURE_OPTION, TIMELINE_OPTION);
+            checkValidateOptions(program, options, PATTERN_OPTION, ARCHITECTURE_OPTION, TIMELINE_OPTION, ADR_OPTION);
             await runValidate({
                 architecturePath: options.architecture,
                 patternPath: options.pattern,
                 timelinePath: options.timeline,
+                adrPath: options.adr,
                 metaSchemaPath: options.schemaDirectory,
                 calmHubUrl: options.calmHubUrl,
                 assetsPath: options.assetsPath,

@@ -129,6 +129,16 @@ describe('CLI Commands', () => {
                 architecturePath: 'arch.json',
             }));
         });
+
+        it('should pass the ADR path to runValidate', async () => {
+            await program.parseAsync(['node', 'cli.js', 'validate', '--adr', 'adr.json']);
+
+            expect(validateModule.checkValidateOptions).toHaveBeenCalledWith(
+                expect.anything(), expect.objectContaining({ adr: 'adr.json' }),
+                '-p, --pattern <file>', '-a, --architecture <file>', '--timeline <file>', '--adr <file>'
+            );
+            expect(validateModule.runValidate).toHaveBeenCalledWith(expect.objectContaining({ adrPath: 'adr.json' }));
+        });
     });
 
     describe('Diff Command', () => {

@@ -129,11 +129,14 @@ Validation requires:
   - an architecture and pattern: to validate the architecture against the CALM pattern
   - a pattern:                   to validate the pattern against CALM schema
   - a timeline:                  to validate the timeline against CALM timeline schema
+  - an ADR:                      to validate the ADR against the CALM ADR schema that its $schema names
+                                 (needs a CALM schema release that includes adr.json)
 
 Options:
   -p, --pattern <file>          Path to the pattern file to use. May be a file path or a URL.
   -a, --architecture <file>     Path to the architecture file to use. May be a file path or a URL.
   --timeline <file>             Path to the timeline file to validate. May be a file path or a URL.
+  --adr <file>                  Path to the Architecture Decision Record (ADR) file to validate. May be a file path or a URL.
   -s, --schema-directory <path> Path to the directory containing the meta schemas to use. (default: the bundled schemas)
   -c, --calm-hub-url <url>      URL to CalmHub to use when loading documents.
   --assets-path <path>          Local path to CALM assets directory for resolving CURIEs without a Hub
@@ -295,6 +298,18 @@ WARN  issues:
 
 which is just letting you know that you have left in some placeholder values which might have been generated with the generate command.
 This isn't a full break, but it implies that you've forgotten to fill out a detail in your architecture.
+
+### Validating an Architecture Decision Record (ADR)
+
+`--adr` validates an ADR file in the CALM `adr.json` format. It cannot be used with `-p`, `-a` or `--timeline`.
+The CLI checks the ADR against the meta-schema that its `$schema` names, and runs the ADR Spectral rules.
+For example, `decision-outcome.chosen-option` must be the `name` of an entry in `considered-options`.
+
+```shell
+% calm validate --adr ./adrs/use-oauth2.json
+```
+
+> **Note:** `adr.json` is a draft schema. It is not in a released `@finos/calm-schema` yet. Until it is, pass a directory that contains the draft `adr.json` with `-s, --schema-directory`. If the CLI cannot resolve the ADR's `$schema`, it fails with a message that the ADR schema is not available in this CALM schema release.
 
 ## CALM Template
 

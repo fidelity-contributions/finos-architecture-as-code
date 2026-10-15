@@ -596,7 +596,7 @@ describe('CLI Integration Tests', () => {
     test('validate command fails when neither architecture nor pattern is provided', async () => {
         await expect(cli.run(['validate'])).rejects.toMatchObject({
             stderr: expect.stringContaining(
-                'error: one of the required options \'-p, --pattern <file>\', \'-a, --architecture <file>\' or \'--timeline <file>\' was not specified'
+                'error: one of the required options \'-p, --pattern <file>\', \'-a, --architecture <file>\', \'--timeline <file>\' or \'--adr <file>\' was not specified'
             )
         });
     });
@@ -670,6 +670,51 @@ describe('CLI Integration Tests', () => {
 
         await expect(cli.run(['validate', '--timeline', apiGatewayTimelinePath, '-o', targetOutputFile]))
             .rejects.toHaveProperty('exitCode', 1);
+    });
+
+    describe('validate command with an ADR', () => {
+        const adrFixtures = path.join(__dirname, '../test_fixtures/adr');
+        const adrSchemaDirectory = path.join(adrFixtures, 'schema');
+
+        test('accepts a valid ADR', async () => {
+            const targetOutputFile = path.join(tempDir, 'validate-adr-valid.json');
+
+            await cli.run(['validate', '--adr', path.join(adrFixtures, 'valid-adr.json'), '-s', adrSchemaDirectory, '-o', targetOutputFile]);
+
+            expect(JSON.parse(fs.readFileSync(targetOutputFile, 'utf-8'))).toEqual(validTutorialOutput);
+        });
+
+        test('rejects an ADR with no status', async () => {
+            const targetOutputFile = path.join(tempDir, 'validate-adr-no-status.json');
+
+            await expect(cli.run(['validate', '--adr', path.join(adrFixtures, 'adr-missing-status.json'), '-s', adrSchemaDirectory, '-o', targetOutputFile]))
+                .rejects.toHaveProperty('exitCode', 1);
+            const output = JSON.parse(fs.readFileSync(targetOutputFile, 'utf-8'));
+            expect(output.jsonSchemaValidationOutputs).toEqual([
+                expect.objectContaining({ message: expect.stringContaining('status'), source: 'adr' })
+            ]);
+        });
+
+        test('rejects an ADR whose chosen option is not a considered option', async () => {
+            const targetOutputFile = path.join(tempDir, 'validate-adr-dangling.json');
+
+            await expect(cli.run(['validate', '--adr', path.join(adrFixtures, 'adr-dangling-chosen-option.json'), '-s', adrSchemaDirectory, '-o', targetOutputFile]))
+                .rejects.toHaveProperty('exitCode', 1);
+            const output = JSON.parse(fs.readFileSync(targetOutputFile, 'utf-8'));
+            expect(output.spectralSchemaValidationOutputs).toEqual([
+                expect.objectContaining({ code: 'adr-chosen-option-must-be-a-considered-option', path: '/decision-outcome/chosen-option', line_start: 41 })
+            ]);
+        });
+
+        test('fails with a clear message when the ADR schema is not available', async () => {
+            await expect(cli.run(['validate', '--adr', path.join(adrFixtures, 'adr-unavailable-schema.json')]))
+                .rejects.toMatchObject({ exitCode: 1, stderr: expect.stringContaining('is not available in this CALM schema release') });
+        });
+
+        test('rejects --adr combined with --architecture', async () => {
+            await expect(cli.run(['validate', '--adr', path.join(adrFixtures, 'valid-adr.json'), '-a', 'arch.json']))
+                .rejects.toMatchObject({ stderr: expect.stringContaining('\'--adr <file>\' cannot be used with any of the options') });
+        });
     });
 
     describe('validate command with URL mapping', () => {

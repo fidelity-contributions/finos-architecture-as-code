@@ -16,9 +16,13 @@ const dummyArchOfCalmSchema = { '$schema': 'calm-schema.json', dummy: 'arch' };
 const dummyCalmSchema = { '$id': 'calm-schema.json', dummy: 'calm schema' };
 const dummyTimeline = { '$schema': 'calm-timeline-schema.json', dummy: 'timeline' };
 const dummyCalmTimelineSchema = { '$id': 'calm-timeline-schema.json', dummy: 'calm timeline schema' };
+const ADR_SCHEMA_ID = 'https://calm.finos.org/draft/adr-support/meta/adr.json';
+const dummyAdr = { '$schema': ADR_SCHEMA_ID, title: 'An ADR' };
+const dummyAdrSchema = { '$id': ADR_SCHEMA_ID, dummy: 'adr schema' };
 
 const mocks = vi.hoisted(() => ({
     validate: vi.fn(),
+    validateAdr: vi.fn(),
     getFormattedOutput: vi.fn(),
     loggerError: vi.fn(),
     loggerDebug: vi.fn(),
@@ -39,6 +43,7 @@ const mocks = vi.hoisted(() => ({
 vi.mock('@finos/calm-shared', async () => ({
     ...(await vi.importActual('@finos/calm-shared')),
     validate: mocks.validate,
+    validateAdr: mocks.validateAdr,
     getFormattedOutput: mocks.getFormattedOutput,
     initLogger: mocks.initLogger,
     loadSchemas: mocks.loadSchemas,
@@ -88,12 +93,15 @@ describe('runValidate', () => {
             if (filePath.endsWith('arch-of-calm.json')) return Promise.resolve(dummyArchOfCalmSchema);
             if (filePath.endsWith('pattern.json')) return Promise.resolve(dummyPattern);
             if (filePath.endsWith('timeline.json')) return Promise.resolve(dummyTimeline);
+            if (filePath === 'adr.json') return Promise.resolve(dummyAdr);
+            if (filePath === 'adr-unknown-schema.json') return Promise.resolve({ $schema: 'https://calm.finos.org/release/9.9/meta/adr.json' });
             return Promise.resolve();
         });
         mocks.getSchema.mockImplementation(function (schemaId: string) {
             // Handle both relative and resolved absolute paths
             if (schemaId === 'calm-schema.json' || schemaId.endsWith('calm-schema.json')) return dummyCalmSchema;
             if (schemaId === 'calm-timeline-schema.json' || schemaId.endsWith('calm-timeline-schema.json')) return dummyCalmTimelineSchema;
+            if (schemaId === ADR_SCHEMA_ID) return dummyAdrSchema;
             throw new Error(`Schema ${schemaId} not found`);
         });
         (validate as Mock).mockResolvedValue(fakeOutcome);
@@ -309,6 +317,43 @@ describe('runValidate', () => {
 
         expect(mkdirp.sync).toHaveBeenCalledWith(path.dirname('out.json'));
         expect(writeFileSync).toHaveBeenCalledWith('out.json', 'formatted output');
+    });
+
+    it('should validate an ADR against the schema that its $schema names', async () => {
+        mocks.validateAdr.mockResolvedValue(fakeOutcome);
+        const options: ValidateOptions = {
+            adrPath: 'adr.json',
+            metaSchemaPath: 'schemas',
+            verbose: false,
+            outputFormat: 'json',
+            outputPath: 'out.json',
+            strict: true,
+        };
+
+        await runValidate(options);
+
+        expect(mocks.parseDocumentLoaderConfig).toHaveBeenCalledWith(expect.objectContaining({ schemaDirectory: 'schemas' }), expect.anything(), undefined);
+        expect(mocks.loadMissingDocument).toHaveBeenCalledWith('adr.json', 'adr');
+        expect(mocks.getSchema).toHaveBeenCalledWith(ADR_SCHEMA_ID);
+        expect(mocks.validateAdr).toHaveBeenCalledWith(dummyAdr, dummyAdrSchema, expect.anything(), false);
+        expect(validate).not.toHaveBeenCalled();
+        expect(exitBasedOffOfValidationOutcome).toHaveBeenCalledWith(fakeOutcome, true);
+        expect(writeFileSync).toHaveBeenCalledWith('out.json', 'formatted output');
+    });
+
+    it('should exit 1 with a clear message when the ADR schema is not available', async () => {
+        await runValidate({
+            adrPath: 'adr-unknown-schema.json',
+            metaSchemaPath: 'schemas',
+            verbose: false,
+            outputFormat: 'json',
+            outputPath: 'out.json',
+            strict: false,
+        });
+
+        expect(mocks.validateAdr).not.toHaveBeenCalled();
+        expect(mocks.loggerError).toHaveBeenCalledWith(expect.stringContaining('is not available in this CALM schema release'));
+        expect(mocks.processExit).toHaveBeenCalledWith(1);
     });
 
     it('should pass CURIE resolver chain when calmHubUrl and assetsPath are provided', async () => {
@@ -528,7 +573,7 @@ describe('checkValidateOptions', () => {
         const errorSpy = vi.spyOn(program, 'error').mockImplementation(function (msg: string) { throw new Error(msg); });
         const options = {};
         expect(() => checkValidateOptions(program, options, '-p, --pattern <file>',
-            '-a, --architecture <file>', '--timeline <file>')).toThrow(/one of the required options/);
+            '-a, --architecture <file>', '--timeline <file>', '--adr <file>')).toThrow(/one of the required options/);
         errorSpy.mockRestore();
     });
 
@@ -537,7 +582,7 @@ describe('checkValidateOptions', () => {
         const errorSpy = vi.spyOn(program, 'error').mockImplementation(function (msg: string) { throw new Error(msg); });
         const options = { pattern: 'pattern.json' };
         expect(() => checkValidateOptions(program, options, '-p, --pattern <file>',
-            '-a, --architecture <file>', '--timeline <file>')).not.toThrow();
+            '-a, --architecture <file>', '--timeline <file>', '--adr <file>')).not.toThrow();
         errorSpy.mockRestore();
     });
 
@@ -546,7 +591,7 @@ describe('checkValidateOptions', () => {
         const errorSpy = vi.spyOn(program, 'error').mockImplementation(function (msg: string) { throw new Error(msg); });
         const options = { architecture: 'arch.json' };
         expect(() => checkValidateOptions(program, options, '-p, --pattern <file>',
-            '-a, --architecture <file>', '--timeline <file>')).not.toThrow();
+            '-a, --architecture <file>', '--timeline <file>', '--adr <file>')).not.toThrow();
         errorSpy.mockRestore();
     });
 
@@ -555,7 +600,7 @@ describe('checkValidateOptions', () => {
         const errorSpy = vi.spyOn(program, 'error').mockImplementation(function (msg: string) { throw new Error(msg); });
         const options = { pattern: 'pattern.json', timeline: 'timeline.json' };
         expect(() => checkValidateOptions(program, options, '-p, --pattern <file>',
-            '-a, --architecture <file>', '--timeline <file>')).toThrow(/cannot be used with either of the options/);
+            '-a, --architecture <file>', '--timeline <file>', '--adr <file>')).toThrow(/cannot be used with either of the options/);
         errorSpy.mockRestore();
     });
 
@@ -564,7 +609,29 @@ describe('checkValidateOptions', () => {
         const errorSpy = vi.spyOn(program, 'error').mockImplementation(function (msg: string) { throw new Error(msg); });
         const options = { architecture: 'arch.json', timeline: 'timeline.json' };
         expect(() => checkValidateOptions(program, options, '-p, --pattern <file>',
-            '-a, --architecture <file>', '--timeline <file>')).toThrow(/cannot be used with either of the options/);
+            '-a, --architecture <file>', '--timeline <file>', '--adr <file>')).toThrow(/cannot be used with either of the options/);
+        errorSpy.mockRestore();
+    });
+
+    it.each([
+        { pattern: 'pattern.json' },
+        { architecture: 'arch.json' },
+        { timeline: 'timeline.json' },
+    ])('should call program.error if an ADR is provided with %o', (other) => {
+        const program = new Command();
+        const errorSpy = vi.spyOn(program, 'error').mockImplementation(function (msg: string) { throw new Error(msg); });
+        const options = { adr: 'adr.json', ...other };
+        expect(() => checkValidateOptions(program, options, '-p, --pattern <file>',
+            '-a, --architecture <file>', '--timeline <file>', '--adr <file>')).toThrow(/'--adr <file>' cannot be used with any of the options/);
+        errorSpy.mockRestore();
+    });
+
+    it('should not call program.error if an ADR is provided', () => {
+        const program = new Command();
+        const errorSpy = vi.spyOn(program, 'error').mockImplementation(function (msg: string) { throw new Error(msg); });
+        const options = { adr: 'adr.json' };
+        expect(() => checkValidateOptions(program, options, '-p, --pattern <file>',
+            '-a, --architecture <file>', '--timeline <file>', '--adr <file>')).not.toThrow();
         errorSpy.mockRestore();
     });
 
@@ -573,7 +640,7 @@ describe('checkValidateOptions', () => {
         const errorSpy = vi.spyOn(program, 'error').mockImplementation(function (msg: string) { throw new Error(msg); });
         const options = { timeline: 'timeline.json' };
         expect(() => checkValidateOptions(program, options, '-p, --pattern <file>',
-            '-a, --architecture <file>', '--timeline <file>')).not.toThrow();
+            '-a, --architecture <file>', '--timeline <file>', '--adr <file>')).not.toThrow();
         errorSpy.mockRestore();
     });
 });

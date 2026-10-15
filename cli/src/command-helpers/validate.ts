@@ -1,4 +1,4 @@
-import { getFormattedOutput, validate, ValidationFormattingOptions, loadArchitectureAndPattern, loadTimeline, enrichWithDocumentPositions, ParsedDocumentContext, initLogger, ValidateOutputFormat, buildDocumentLoader, DocumentLoader, Logger, CalmReferenceResolver, ChainReferenceResolver, LocalCurieReferenceResolver, ShaCacheReferenceResolver, CurieReferenceResolver, SchemaDirectoryReferenceResolver, SchemaDirectory, ValidationOutcome, WorkspaceDocumentLoader, isLocalPath, isRelativePath } from '@finos/calm-shared';
+import { getFormattedOutput, validate, validateAdr, ValidationFormattingOptions, loadArchitectureAndPattern, loadTimeline, loadAdr, enrichWithDocumentPositions, ParsedDocumentContext, initLogger, ValidateOutputFormat, buildDocumentLoader, DocumentLoader, Logger, CalmReferenceResolver, ChainReferenceResolver, LocalCurieReferenceResolver, ShaCacheReferenceResolver, CurieReferenceResolver, SchemaDirectoryReferenceResolver, SchemaDirectory, ValidationOutcome, WorkspaceDocumentLoader, isLocalPath, isRelativePath } from '@finos/calm-shared';
 
 import path from 'path';
 import { mkdirp } from 'mkdirp';
@@ -13,6 +13,7 @@ export interface ValidateOptions {
     patternPath?: string;
     architecturePath?: string;
     timelinePath?: string;
+    adrPath?: string;
     metaSchemaPath: string;
     calmHubUrl?: string;
     assetsPath?: string;
@@ -42,6 +43,13 @@ export async function runValidate(options: ValidateOptions) {
         let architecture: object | undefined = undefined;
         let pattern: object | undefined = undefined;
         let timeline: object | undefined = undefined;
+
+        if (options.adrPath) {
+            const { adr, schema } = await loadAdr(options.adrPath, docLoader, schemaDirectory, logger);
+            const outcome = await validateAdr(adr, schema, schemaDirectory, options.verbose);
+            writeOutcome(outcome, options, buildDocumentContexts(options, logger));
+            return;
+        }
 
         if (timelinePath) {
             const result = await loadTimeline(
@@ -75,10 +83,7 @@ export async function runValidate(options: ValidateOptions) {
         }
         const curieResolver = buildCurieResolverChain(options, schemaDirectory);
         const outcome = await validate(architecture, pattern, timeline, schemaDirectory, options.verbose, curieResolver);
-        enrichWithDocumentPositions(outcome, documentContexts);
-        const content = getFormattedOutput(outcome, options.outputFormat, toFormattingOptions(documentContexts));
-        writeOutputFile(options.outputPath, content);
-        exitBasedOffOfValidationOutcome(outcome, options.strict);
+        writeOutcome(outcome, options, documentContexts);
     }
     catch (err) {
         const message = err instanceof Error ? err.message : String(err);
@@ -92,6 +97,13 @@ export async function runValidate(options: ValidateOptions) {
         if (stack) logger.debug(stack);
         process.exit(1);
     }
+}
+
+function writeOutcome(outcome: ValidationOutcome, options: ValidateOptions, documentContexts: Record<string, LoadedDocumentContext>): void {
+    enrichWithDocumentPositions(outcome, documentContexts);
+    const content = getFormattedOutput(outcome, options.outputFormat, toFormattingOptions(documentContexts));
+    writeOutputFile(options.outputPath, content);
+    exitBasedOffOfValidationOutcome(outcome, options.strict);
 }
 
 function formatErrorCauseChain(error: unknown): string[] {
@@ -160,12 +172,15 @@ export function writeOutputFile(output: string, validationsOutput: string) {
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function checkValidateOptions(program: Command, options: any, patternOption: string, architectureOption: string, timelineOption: string) {
+export function checkValidateOptions(program: Command, options: any, patternOption: string, architectureOption: string, timelineOption: string, adrOption: string) {
+    if (options.adr && (options.pattern || options.architecture || options.timeline)) {
+        program.error(`error: the option '${adrOption}' cannot be used with any of the options '${patternOption}', '${architectureOption}' or '${timelineOption}'`);
+    }
     if (options.timeline && (options.pattern || options.architecture)) {
         program.error(`error: the option '${timelineOption}' cannot be used with either of the options '${patternOption}' or '${architectureOption}'`);
     }
-    if (!options.pattern && !options.architecture && !options.timeline) {
-        program.error(`error: one of the required options '${patternOption}', '${architectureOption}' or '${timelineOption}' was not specified`);
+    if (!options.pattern && !options.architecture && !options.timeline && !options.adr) {
+        program.error(`error: one of the required options '${patternOption}', '${architectureOption}', '${timelineOption}' or '${adrOption}' was not specified`);
     }
 }
 
@@ -195,6 +210,13 @@ function buildDocumentContexts(options: ValidateOptions, logger: Logger): Record
         const context = loadDocumentContext(options.timelinePath, 'timeline', logger);
         if (context) {
             contexts['timeline'] = context;
+        }
+    }
+
+    if (options.adrPath) {
+        const context = loadDocumentContext(options.adrPath, 'adr', logger);
+        if (context) {
+            contexts['adr'] = context;
         }
     }
 
