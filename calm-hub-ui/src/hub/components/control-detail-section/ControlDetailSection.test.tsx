@@ -188,6 +188,10 @@ describe('ControlDetailSection', () => {
             await user.click(screen.getByRole('tab', { name: 'Configuration' }));
             expect(screen.getByRole('tab', { name: 'Configuration' })).toHaveClass('tab-active');
             expect(screen.getByTestId('readable-json-view')).toHaveTextContent(JSON.stringify(configJson));
+
+            await user.click(screen.getByRole('tab', { name: 'Requirement' }));
+            expect(screen.getByRole('tab', { name: 'Requirement' })).toHaveClass('tab-active');
+            expect(screen.getByTestId('readable-json-view')).toHaveTextContent(JSON.stringify(requirementSchema));
         });
 
         it('returns to the Requirement tab when the control changes', async () => {
@@ -416,6 +420,49 @@ describe('ControlDetailSection', () => {
                 expect(mockFetchConfigurationForVersion).toHaveBeenLastCalledWith('security', 1, 10, '1.0.0');
             });
             expect(picker).toHaveValue('1.0.0');
+        });
+    });
+
+    // ──────────────────────────────────────────────────
+    // Load failures
+    // ──────────────────────────────────────────────────
+    describe('load failures', () => {
+        let consoleError: ReturnType<typeof vi.spyOn>;
+        beforeEach(() => {
+            consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+        });
+        afterEach(() => consoleError.mockRestore());
+
+        it.each([
+            ['requirement versions', () => mockFetchRequirementVersions.mockRejectedValue(new Error('x')), 'Failed to load requirement versions:'],
+            ['configurations', () => mockFetchConfigurationsForControl.mockRejectedValue(new Error('x')), 'Failed to load configurations:'],
+            ['a requirement', () => mockFetchRequirementForVersion.mockRejectedValue(new Error('x')), 'Failed to load control requirement:'],
+            ['configuration versions', () => mockFetchConfigurationVersions.mockRejectedValue(new Error('x')), 'Failed to load configuration versions:'],
+            ['a configuration', () => mockFetchConfigurationForVersion.mockRejectedValue(new Error('x')), 'Failed to load configuration:'],
+        ])('logs and recovers when %s fails to load', async (_label, fail, message) => {
+            setupMocks();
+            fail();
+            render(<ControlDetailSection controlData={controlData} />);
+
+            await waitFor(() => expect(consoleError).toHaveBeenCalledWith('%s', message, expect.any(Error)));
+            expect(screen.getByText('Requirement')).toBeInTheDocument();
+        });
+
+        it('ignores a failure for a control that is no longer shown', async () => {
+            setupMocks();
+            let rejectOld: (reason: Error) => void = () => undefined;
+            mockFetchRequirementVersions.mockReturnValueOnce(
+                new Promise((_resolve, reject) => {
+                    rejectOld = reject;
+                })
+            );
+            const { rerender } = render(<ControlDetailSection controlData={controlData} />);
+            rerender(<ControlDetailSection controlData={{ ...controlData, controlId: 2 }} />);
+            await waitFor(() => expect(mockFetchRequirementVersions).toHaveBeenCalledTimes(2));
+
+            rejectOld(new Error('stale'));
+            await waitFor(() => expect(mockFetchRequirementForVersion).toHaveBeenCalled());
+            expect(consoleError).not.toHaveBeenCalled();
         });
     });
 });
