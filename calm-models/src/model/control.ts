@@ -1,35 +1,44 @@
 import { Resolvable } from './resolvable.js';
 import { CalmAdaptable } from './adaptable.js';
-import { CalmControlDetailSchema, CalmControlSchema, CalmControlsSchema } from '../types';
+import { CalmControlDetailSchema, CalmControlSchema, CalmControlsSchema, CalmControlStatusSchema } from '../types';
 import {
     CalmControlCanonicalModel,
     CalmControlDetailCanonicalModel,
     CalmControlsCanonicalModel
 } from '../canonical/template-models.js';
 
+/** The compliance status of a control requirement. An absent status means `compliant`. */
+export function controlStatus(detail: { status?: CalmControlStatusSchema }): CalmControlStatusSchema {
+    return detail.status ?? 'compliant';
+}
+
 export class CalmControlDetail implements CalmAdaptable<CalmControlDetailSchema, CalmControlDetailCanonicalModel> {
     constructor(
         public originalJson: CalmControlDetailSchema,
         public requirement: Resolvable<Record<string, unknown>>,
         public configUrl?: Resolvable<Record<string, unknown>>,
-        public config?: Record<string, unknown>
+        public config?: Record<string, unknown>,
+        public status: CalmControlStatusSchema = 'compliant',
+        public adrs?: string[]
     ) {}
 
     toCanonicalSchema(): CalmControlDetailCanonicalModel {
         const config = (this.configUrl && this.configUrl.isResolved) ? this.configUrl.value : this.config;
         return {
             'requirement-url': this.requirement.reference,
-            ...config
+            ...config,
+            ...(this.originalJson.status !== undefined ? { status: this.status } : {}),
+            ...(this.adrs !== undefined ? { adrs: this.adrs } : {})
         };
     }
 
     static fromSchema(schema: CalmControlDetailSchema): CalmControlDetail {
         const controlRequirement = new Resolvable<Record<string, unknown>>(schema['requirement-url']);
-        if ('config-url' in schema) {
-            return new CalmControlDetail(schema, controlRequirement, new Resolvable(schema['config-url']));
-        } else {
-            return new CalmControlDetail(schema, controlRequirement, undefined, schema.config);
-        }
+        const configUrl = 'config-url' in schema && typeof schema['config-url'] === 'string'
+            ? new Resolvable<Record<string, unknown>>(schema['config-url'])
+            : undefined;
+        const config = !configUrl && 'config' in schema ? schema.config : undefined;
+        return new CalmControlDetail(schema, controlRequirement, configUrl, config, controlStatus(schema), schema.adrs);
     }
 
     toSchema(): CalmControlDetailSchema {

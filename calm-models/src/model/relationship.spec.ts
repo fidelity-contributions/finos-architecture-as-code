@@ -301,4 +301,15 @@ describe('CalmRelationship (hibernate-model)', () => {
             'protocol': undefined
         });
     });
+
+    it('models adrs on the relationship, not in additionalProperties', () => {
+        const relationship = CalmRelationship.fromSchema({
+            'unique-id': 'ledger-link',
+            'relationship-type': { connects: { source: { node: 'a' }, destination: { node: 'b' } } },
+            adrs: ['finos:adrs:accept-plain-http@1'],
+        });
+        expect(relationship.adrs).toEqual(['finos:adrs:accept-plain-http@1']);
+        expect(relationship.additionalProperties).toEqual({});
+        expect(relationship.toCanonicalSchema().adrs).toEqual(['finos:adrs:accept-plain-http@1']);
+    });
 });

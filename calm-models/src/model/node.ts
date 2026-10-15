@@ -58,7 +58,8 @@ export class CalmNode implements CalmAdaptable<CalmNodeSchema, CalmNodeCanonical
         public interfaces?: CalmInterface[],
         public controls?: CalmControls,
         public metadata?: CalmMetadata,
-        public additionalProperties?: Record<string, unknown>
+        public additionalProperties?: Record<string, unknown>,
+        public adrs?: string[]
     ) {}
 
     toCanonicalSchema(): CalmNodeCanonicalModel {
@@ -75,6 +76,7 @@ export class CalmNode implements CalmAdaptable<CalmNodeSchema, CalmNodeCanonical
             interfaces: this.interfaces ? this.interfaces.map(i => i.toCanonicalSchema()) : undefined,
             controls: this.controls ? this.controls.toCanonicalSchema() : undefined,
             metadata: this.metadata ? this.metadata.toCanonicalSchema() : undefined,
+            adrs: this.adrs,
             additionalProperties: this.additionalProperties || undefined
         };
     }
@@ -89,6 +91,7 @@ export class CalmNode implements CalmAdaptable<CalmNodeSchema, CalmNodeCanonical
             interfaces,
             controls,
             metadata,
+            adrs,
             ...additional
         } = schema;
 
@@ -102,7 +105,8 @@ export class CalmNode implements CalmAdaptable<CalmNodeSchema, CalmNodeCanonical
             interfaces? interfaces.map(CalmInterface.fromSchema) : undefined,
             controls? CalmControls.fromSchema(controls): undefined,
             metadata ? CalmMetadata.fromSchema(metadata) : undefined,
-            Object.keys(additional).length > 0 ? additional : undefined
+            Object.keys(additional).length > 0 ? additional : undefined,
+            adrs
         );
     }
 

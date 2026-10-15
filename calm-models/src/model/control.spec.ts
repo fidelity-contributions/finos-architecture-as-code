@@ -1,4 +1,4 @@
-import { CalmControl, CalmControlDetail } from './control.js';
+import { CalmControl, CalmControlDetail, controlStatus } from './control.js';
 import { CalmControls } from './control';
 import { CalmControlsSchema } from '../types/control-types';
 import { Resolvable } from './resolvable';
@@ -289,4 +289,47 @@ describe('CalmControl', () => {
     });
 
 
+});
+
+describe('control status and adrs', () => {
+    const requirementUrl = 'https://example.com/requirement.json';
+
+    it('treats an absent status as compliant and does not add it to the canonical model', () => {
+        const detail = CalmControlDetail.fromSchema({ 'requirement-url': requirementUrl, config: { a: 1 } });
+        expect(detail.status).toBe('compliant');
+        expect(controlStatus({})).toBe('compliant');
+        expect(detail.toCanonicalSchema()).toEqual({ 'requirement-url': requirementUrl, a: 1 });
+    });
+
+    it('models a non-compliant requirement with ADRs and no config', () => {
+        const detail = CalmControlDetail.fromSchema({
+            'requirement-url': requirementUrl,
+            status: 'non-compliant',
+            adrs: ['finos:adrs:accept-plain-http@1'],
+        });
+        expect(detail.status).toBe('non-compliant');
+        expect(detail.adrs).toEqual(['finos:adrs:accept-plain-http@1']);
+        expect(detail.config).toBeUndefined();
+        expect(detail.configUrl).toBeUndefined();
+        expect(detail.toCanonicalSchema()).toEqual({
+            'requirement-url': requirementUrl,
+            status: 'non-compliant',
+            adrs: ['finos:adrs:accept-plain-http@1'],
+        });
+    });
+
+    it('keeps an explicit compliant status and the ADRs of a compliant requirement', () => {
+        const detail = CalmControlDetail.fromSchema({
+            'requirement-url': requirementUrl,
+            'config-url': 'https://example.com/config.json',
+            status: 'compliant',
+            adrs: ['finos:adrs:use-oauth2@2'],
+        });
+        expect(detail.configUrl?.reference).toBe('https://example.com/config.json');
+        expect(detail.toCanonicalSchema()).toEqual({
+            'requirement-url': requirementUrl,
+            status: 'compliant',
+            adrs: ['finos:adrs:use-oauth2@2'],
+        });
+    });
 });

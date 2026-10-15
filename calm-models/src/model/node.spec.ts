@@ -296,4 +296,19 @@ describe('CalmNode', () => {
         expect(node.additionalProperties).toEqual({ foo: 'bar', bar: 42 });
         expect(node.toCanonicalSchema().additionalProperties).toEqual({ foo: 'bar', bar: 42 });
     });
+
+    it('models adrs on the node, not in additionalProperties', () => {
+        const schema: CalmNodeSchema = {
+            'unique-id': 'payment-service',
+            'node-type': 'service',
+            name: 'Payment Service',
+            description: 'Processes payments',
+            adrs: ['finos:adrs:use-oauth2@1'],
+        };
+        const node = CalmNode.fromSchema(schema);
+        expect(node.adrs).toEqual(['finos:adrs:use-oauth2@1']);
+        expect(node.additionalProperties).toBeUndefined();
+        expect(node.toCanonicalSchema().adrs).toEqual(['finos:adrs:use-oauth2@1']);
+        expect(node.toSchema()).toBe(schema);
+    });
 });
