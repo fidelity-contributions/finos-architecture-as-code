@@ -43,6 +43,36 @@ Controls are made up of:
 }
 ```
 
+## Compliance status
+
+:::info Schema Version
+`status` and `adrs` on a control requirement are a **draft**. They need the upcoming CALM schema release.
+:::
+
+Each entry in `requirements` can record whether the requirement is met:
+
+* status: `compliant` or `non-compliant`. An absent `status` means `compliant`.
+* adrs: references to the [Architecture Decision Records](adrs) that justify the configuration, or the deviation.
+
+A `non-compliant` requirement must have at least one ADR, and it does not need `config` or `config-url`. A `compliant` requirement still needs `config` or `config-url`.
+
+```json
+"controls": {
+    "encryption-in-transit": {
+        "description": "Traffic must be encrypted in transit",
+        "requirements": [
+            {
+                "requirement-url": "https://myorg.example.com/controls/security/encryption-in-transit.requirement.json",
+                "status": "non-compliant",
+                "adrs": ["finos:adrs:accept-plain-http-for-legacy-ledger@1"]
+            }
+        ]
+    }
+}
+```
+
+`calm validate` enforces these rules. CALM Hub does not validate documents against the schema, so it does not enforce them.
+
 ## Control requirement
 
 A control requirement lays out what the control is and how it is expected to be enforced.

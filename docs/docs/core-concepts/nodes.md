@@ -27,6 +27,7 @@ Each node within the CALM schema has several key properties that define its beha
 - **run-as**: Optional; A string value for the identity that the node will run as. This could be a unix id like www-data or a numeric id 1000
 - **interfaces**: An optional array defining the interfaces the node exposes, detailing how it interacts with other components.
 - **controls**: Optional controls that specify security or operational policies applied to the node, such as access restrictions or compliance requirements.  §
+- **adrs**: Optional; references to the [Architecture Decision Records](adrs) about this node. Needs the upcoming CALM schema release.
 
 ### Example of a Node Definition
 
