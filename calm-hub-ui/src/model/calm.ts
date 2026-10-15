@@ -55,8 +55,12 @@ export function isSlug(id: string): boolean {
 /**
  * Summary returned from the API for ADR resources (title + status instead of name + description).
  */
+/** Route segment that asks the ADR loader for the newest revision. */
+export const LATEST_ADR_REVISION = 'latest';
+
 export interface AdrSummary {
     id: number;
+    slug?: string;
     title: string;
     status: string;
 }

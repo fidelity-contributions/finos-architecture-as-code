@@ -147,17 +147,19 @@ vi.mock('./components/diagram-section/DiagramSection', async () => {
     const DiagramSection = ({
         data,
         onItemSelect,
+        selectedElementId,
         breadcrumbs,
         onDisplayNameChange,
     }: {
         data: { id?: string };
         onItemSelect?: (item: { data: unknown }) => void;
+        selectedElementId?: string;
         breadcrumbs?: unknown[];
         onDisplayNameChange?: (name: string | undefined) => void;
     }) => {
         const { onNavigateToDetailedArch } = useDiagramActions();
         return (
-        <div data-testid="diagram-section">
+        <div data-testid="diagram-section" data-selected-element={selectedElementId ?? ''}>
             Diagram: {data?.id}
             {/* Trail from history state, echoed for breadcrumb-accumulation tests. */}
             <div data-testid="breadcrumbs">{JSON.stringify(breadcrumbs ?? [])}</div>
@@ -726,6 +728,21 @@ describe('Hub', () => {
             expect(screen.getByTestId('node-sheet')).toBeInTheDocument();
             expect(screen.getByText('Node One')).toBeInTheDocument();
             expect(container.querySelector('.animate-slide-in-right')).toBeNull();
+
+            restore();
+        });
+
+        it('passes the selected element id to the diagram and clears it on close', () => {
+            const restore = mockMobileViewport(true);
+            renderAt('/');
+
+            loadData();
+            expect(screen.getByTestId('diagram-section')).toHaveAttribute('data-selected-element', '');
+            fireEvent.click(screen.getByTestId('select-node'));
+            expect(screen.getByTestId('diagram-section')).toHaveAttribute('data-selected-element', 'n1');
+
+            fireEvent.click(screen.getByRole('button', { name: /close details/i }));
+            expect(screen.getByTestId('diagram-section')).toHaveAttribute('data-selected-element', '');
 
             restore();
         });

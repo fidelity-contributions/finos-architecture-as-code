@@ -30,7 +30,10 @@ vi.mock('../../../service/interface-service.js', () => ({
 vi.mock('../../../service/adr-service/adr-service.js', () => ({
     AdrService: vi.fn().mockImplementation(function () {
         return {
-            fetchAdrSummaries: vi.fn().mockResolvedValue([{ id: 3, title: 'Pick a DB', status: 'accepted' }]),
+            fetchAdrSummaries: vi.fn().mockResolvedValue([
+                { id: 3, title: 'Pick a DB', status: 'accepted' },
+                { id: 4, slug: 'use-oauth2', title: 'Use OAuth2', status: 'proposed' },
+            ]),
         };
     }),
 }));
@@ -71,6 +74,7 @@ describe('useNamespaceItems', () => {
 
         const adrs = result.current.groups.find((g) => g.type === 'ADRs');
         expect(adrs?.items[0]).toMatchObject({ id: '3', name: 'Pick a DB (accepted)' });
+        expect(adrs?.items[1]).toMatchObject({ id: 'use-oauth2', name: 'Use OAuth2 (proposed)' });
 
         const interfaces = result.current.groups.find((g) => g.type === 'Interfaces');
         expect(interfaces?.items[0]).toMatchObject({

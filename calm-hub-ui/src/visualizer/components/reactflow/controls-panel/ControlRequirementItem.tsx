@@ -1,5 +1,6 @@
 import { FiExternalLink } from 'react-icons/fi';
 import { THEME } from '../theme.js';
+import { ControlComplianceStatus } from './ControlComplianceStatus.js';
 import type { ControlRequirementItemProps, ConfigSectionProps, AppliesToSectionProps } from '../../../contracts/contracts.js';
 
 export function ControlRequirementItem({ requirement, onNodeClick }: ControlRequirementItemProps) {
@@ -12,6 +13,8 @@ export function ControlRequirementItem({ requirement, onNodeClick }: ControlRequ
                 padding: '8px',
             }}
         >
+            <ControlComplianceStatus status={requirement.status} adrs={requirement.adrs} />
+
             {requirement['requirement-url'] && (
                 <RequirementLink url={requirement['requirement-url']} />
             )}

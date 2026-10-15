@@ -9,7 +9,10 @@ const fetchInterfacesForNamespace = vi.fn();
 const fetchControlsForDomain = vi.fn();
 
 vi.mock('../../service/calm-service.js', () => ({ CalmService: vi.fn().mockImplementation(function () { return {}; }) }));
-vi.mock('../../service/adr-service/adr-service.js', () => ({ AdrService: vi.fn().mockImplementation(function () { return {}; }) }));
+const fetchAdrByReference = vi.fn();
+vi.mock('../../service/adr-service/adr-service.js', () => ({
+    AdrService: vi.fn().mockImplementation(function () { return { fetchAdrByReference }; }),
+}));
 vi.mock('../../service/interface-service.js', () => ({
     InterfaceService: vi.fn().mockImplementation(function () { return { fetchInterfacesForNamespace }; }),
 }));
@@ -296,5 +299,29 @@ describe('useResourceFromRoute — stale results after navigation', () => {
         await flush();
 
         expect(callbacks.onControlLoad).not.toHaveBeenCalled();
+    });
+
+    it('loads an ADR by slug and revision', async () => {
+        const adr = { namespace: 'finos', id: 7, slug: 'use-oauth2', revision: 3 };
+        fetchAdrByReference.mockResolvedValue(adr);
+        renderAt('/finos/adrs/use-oauth2/3');
+        await waitFor(() => expect(callbacks.onAdrLoad).toHaveBeenCalledWith(adr));
+        expect(fetchAdrByReference).toHaveBeenCalledWith('finos', 'use-oauth2', '3');
+        expect(callbacks.onDataLoad).not.toHaveBeenCalled();
+    });
+
+    it('loads an ADR by numeric id at the latest revision', async () => {
+        fetchAdrByReference.mockResolvedValue({ namespace: 'finos', id: 7, revision: 2 });
+        renderAt('/finos/adrs/7/latest');
+        await waitFor(() => expect(fetchAdrByReference).toHaveBeenCalledWith('finos', '7', 'latest'));
+        await waitFor(() => expect(callbacks.onAdrLoad).toHaveBeenCalled());
+    });
+
+    it('reports an ADR that fails to load', async () => {
+        const error = new Error('missing');
+        fetchAdrByReference.mockRejectedValue(error);
+        renderAt('/finos/adrs/missing/1');
+        await waitFor(() => expect(callbacks.onLoadError).toHaveBeenCalledWith(error));
+        expect(callbacks.onAdrLoad).not.toHaveBeenCalled();
     });
 });

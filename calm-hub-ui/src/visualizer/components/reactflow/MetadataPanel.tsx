@@ -31,8 +31,6 @@ export function MetadataPanel({
           : hasDeployment
             ? 'deployment'
             : 'adrs';
-    // Only a tab the user clicked is remembered; otherwise the default follows the data, so evaluations that
-    // arrive after mount still open on their tab.
     const [userTab, setUserTab] = useState<MetadataPanelTabType | null>(null);
     const tabAvailable: Record<MetadataPanelTabType, boolean> = {
         evaluations: hasEvaluations,
@@ -96,7 +94,7 @@ export function MetadataPanel({
                     {hasControls && hasDeployment && <span style={{ color: THEME.colors.muted }}>•</span>}
                     {hasDeployment && <span>Deployment ({decorators.length})</span>}
                     {(hasControls || hasDeployment) && hasAdrs && <span style={{ color: THEME.colors.muted }}>•</span>}
-                    {hasAdrs && <span>ADRs ({adrs.length})</span>}
+                    {hasAdrs && <span>ADRs ({adrCount})</span>}
                 </div>
                 <button
                     onClick={onToggleCollapse}
@@ -251,7 +249,9 @@ export function MetadataPanel({
                 {activeTab === 'deployment' && (
                     <DeploymentPanel decorators={decorators as DeploymentDecorator[]} />
                 )}
-                {activeTab === 'adrs' && hasAdrs && <AdrsPanel adrs={adrs} />}
+                {activeTab === 'adrs' && hasAdrs && (
+                    <AdrsPanel adrs={adrs} />
+                )}
             </div>
         </div>
     );

@@ -61,7 +61,7 @@ export function useNamespaceItems(namespace: string): { groups: NamespaceItemGro
                 { type: 'Standards', items: standards.map(summaryToItem) },
                 {
                     type: 'ADRs',
-                    items: adrs.map((a) => ({ id: a.id.toString(), name: `${a.title} (${a.status})` })),
+                    items: adrs.map((a) => ({ id: a.slug ?? a.id.toString(), name: `${a.title} (${a.status})` })),
                 },
                 {
                     type: 'Interfaces',

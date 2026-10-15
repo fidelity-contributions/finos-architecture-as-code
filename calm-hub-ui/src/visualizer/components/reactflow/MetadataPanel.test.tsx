@@ -18,8 +18,10 @@ vi.mock('./DeploymentPanel', () => ({
 }));
 
 vi.mock('./AdrsPanel', () => ({
-    AdrsPanel: ({ adrs }: { adrs: string[] }) => (
-        <div data-testid="adrs-panel">ADRs: {adrs.length}</div>
+    AdrsPanel: ({ adrs, elementAdrs, selectedElementId }: { adrs: string[]; elementAdrs?: unknown[]; selectedElementId?: string }) => (
+        <div data-testid="adrs-panel">
+            ADRs: {adrs.length} elements: {elementAdrs?.length ?? 0} selected: {selectedElementId ?? 'none'}
+        </div>
     ),
 }));
 
@@ -192,6 +194,23 @@ describe('MetadataPanel', () => {
         fireEvent.click(screen.getByRole('button', { name: /ADRs \(1\)/ }));
 
         expect(screen.getByTestId('adrs-panel')).toBeInTheDocument();
+    });
+
+    it('counts node-level ADRs and passes the selection to the AdrsPanel', () => {
+        const elementAdrs = [{ id: 'api', name: 'API', kind: 'node' as const, adrs: ['finos:adrs:a@1', 'finos:adrs:b@1'] }];
+        render(
+            <MetadataPanel {...defaultProps} controls={{}} adrs={[]} elementAdrs={elementAdrs} selectedElementId="api" />
+        );
+
+        expect(screen.getByRole('button', { name: /ADRs \(2\)/ })).toBeInTheDocument();
+        expect(screen.getByTestId('adrs-panel')).toHaveTextContent('ADRs: 0 elements: 1 selected: api');
+    });
+
+    it('counts node-level ADRs in the collapsed bar', () => {
+        const elementAdrs = [{ id: 'api', name: 'API', kind: 'node' as const, adrs: ['finos:adrs:a@1'] }];
+        render(<MetadataPanel {...defaultProps} adrs={['x']} elementAdrs={elementAdrs} isCollapsed />);
+
+        expect(screen.getByText('ADRs (2)')).toBeInTheDocument();
     });
 
     it('defaults to adrs tab when only adrs exist', () => {

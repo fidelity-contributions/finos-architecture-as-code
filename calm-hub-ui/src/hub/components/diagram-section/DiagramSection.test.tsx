@@ -49,12 +49,14 @@ vi.mock('../../../visualizer/components/drawer/Drawer.js', () => ({
     // simulate a drag without pulling in the full ReactFlow tree.
     Drawer: ({
         data,
+        selectedElementId,
         onPositionsChange,
     }: {
         data: Data;
+        selectedElementId?: string;
         onPositionsChange?: (positions: { id: string; position: { x: number; y: number } }[]) => void;
     }) => (
-        <div data-testid="drawer">
+        <div data-testid="drawer" data-selected-element={selectedElementId ?? ''}>
             Drawer for {data.id}
             <button
                 onClick={() => onPositionsChange?.([{ id: 'node-1', position: { x: 1, y: 2 } }])}
@@ -395,6 +397,16 @@ describe('DiagramSection', () => {
 
             expect(screen.getByTestId('drawer')).toBeInTheDocument();
             expect(screen.getByTestId('drawer')).toHaveTextContent('Drawer for test-arch');
+        });
+
+        it('passes the selected element to the Drawer', () => {
+            render(
+                <MemoryRouter>
+                    <DiagramSection data={architectureData} selectedElementId="node-1" />
+                </MemoryRouter>
+            );
+
+            expect(screen.getByTestId('drawer')).toHaveAttribute('data-selected-element', 'node-1');
         });
 
         it('fetches deployment decorators via the shared service method with namespace, id and version', async () => {

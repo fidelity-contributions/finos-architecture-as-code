@@ -6,13 +6,13 @@ import { useDiagramActions } from '../../context/DiagramActionsContext.js';
 import type { ControlItem } from '../../contracts/contracts.js';
 import {
     Badge, RiskLevelBadge,
-    PropertiesSection, ControlsSection, RisksSection, MitigationsSection, InterfacesSection,
+    PropertiesSection, ControlsSection, AdrsSection, RisksSection, MitigationsSection, InterfacesSection,
     getNodeIcon, extractAigf, getExtraProperties,
 } from './detail-components.js';
 
 const KNOWN_FIELDS = new Set([
     'unique-id', 'name', 'node-type', 'description', 'details',
-    'interfaces', 'controls', 'metadata',
+    'interfaces', 'controls', 'metadata', 'adrs',
 ]);
 
 export function NodeDetails({ data }: { data: CalmNodeSchema }) {
@@ -78,6 +78,7 @@ export function NodeDetails({ data }: { data: CalmNodeSchema }) {
             <PropertiesSection properties={extraProps} />
             <InterfacesSection interfaces={interfaces} />
             <ControlsSection controls={controls} />
+            <AdrsSection adrs={data.adrs} />
             <RisksSection risks={risks} riskLevel={riskLevel} />
             <MitigationsSection mitigations={mitigations} />
         </div>

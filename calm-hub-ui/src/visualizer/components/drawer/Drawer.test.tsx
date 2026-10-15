@@ -189,6 +189,57 @@ describe('Drawer', () => {
         expect(screen.getByTestId('relationship-count')).toHaveTextContent('2');
     });
 
+    it('collects architecture, node and relationship ADRs for the metadata panel', () => {
+        const data = {
+            ...architectureData,
+            data: {
+                adrs: [' finos:adrs:platform@1 ', '', 42],
+                nodes: [
+                    { 'unique-id': 'api', name: 'Payments API', 'node-type': 'service', adrs: ['finos:adrs:use-oauth2@3'] },
+                    { 'unique-id': 'db', 'node-type': 'database', adrs: ['finos:adrs:use-postgres@1'] },
+                    { 'unique-id': 'cache', name: 'Cache', 'node-type': 'service' },
+                ],
+                relationships: [
+                    {
+                        'unique-id': 'api-db',
+                        description: 'API to DB',
+                        adrs: ['/calm/namespaces/finos/adrs/use-tls/versions/1'],
+                        'relationship-type': { connects: { source: { node: 'api' }, destination: { node: 'db' } } },
+                    },
+                    {
+                        'unique-id': 'api-cache',
+                        adrs: ['finos:adrs:cache@1'],
+                        'relationship-type': { connects: { source: { node: 'api' }, destination: { node: 'cache' } } },
+                    },
+                ],
+            },
+        } as unknown as Data;
+
+        render(<Drawer data={data} selectedElementId="api" />);
+
+        expect(JSON.parse(screen.getByTestId('metadata-adrs').textContent ?? '')).toEqual({
+            adrs: ['finos:adrs:platform@1'],
+            elementAdrs: [
+                { id: 'api', name: 'Payments API', kind: 'node', adrs: ['finos:adrs:use-oauth2@3'] },
+                { id: 'db', name: 'db', kind: 'node', adrs: ['finos:adrs:use-postgres@1'] },
+                { id: 'api-db', name: 'API to DB', kind: 'relationship', adrs: ['/calm/namespaces/finos/adrs/use-tls/versions/1'] },
+                { id: 'api-cache', name: 'api-cache', kind: 'relationship', adrs: ['finos:adrs:cache@1'] },
+            ],
+            selectedElementId: 'api',
+        });
+    });
+
+    it('shows the metadata panel when only a node carries ADRs', () => {
+        const data = {
+            ...architectureData,
+            data: { nodes: [{ 'unique-id': 'api', name: 'API', 'node-type': 'service', adrs: ['finos:adrs:a@1'] }] },
+        } as unknown as Data;
+
+        render(<Drawer data={data} />);
+
+        expect(screen.getByTestId('metadata-panel')).toBeInTheDocument();
+    });
+
     it('does not show sidebar initially', () => {
         render(<Drawer data={calmData as unknown as Data} />);
         expect(screen.queryByLabelText('Close details')).not.toBeInTheDocument();

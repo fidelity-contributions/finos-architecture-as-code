@@ -1,3 +1,5 @@
+import type { CalmControlStatusSchema } from '@finos/calm-models/types';
+
 //These types and interfaces represent CALM control data.
 
 /**
@@ -18,6 +20,10 @@ export interface ControlRequirement {
     'requirement-url'?: string;
     'config-url'?: string;
     config?: ControlRequirementConfig;
+    /** Absent means `compliant`. A `non-compliant` requirement may have no config. */
+    status?: CalmControlStatusSchema;
+    /** ADRs that justify the status, most often a deviation. */
+    adrs?: string[];
 }
 
 /**

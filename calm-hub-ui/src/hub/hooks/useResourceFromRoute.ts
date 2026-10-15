@@ -142,6 +142,11 @@ export function useResourceFromRoute({
             return cleanup;
         }
 
+        if (uiType === 'ADRs') {
+            adrService.fetchAdrByReference(namespace, id, version).then(emitAdr).catch(reportError);
+            return cleanup;
+        }
+
         if (isSlug(id)) {
             loadResourceForId(version, uiType, namespace, id, calmService, emitData, reportError);
         } else {

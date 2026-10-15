@@ -127,6 +127,9 @@ export async function fetchVersionsForResource(
         case 'Standards':
             return calmService.fetchStandardVersions(namespace, resourceID);
         case 'ADRs':
+            if (isSlug(resourceID)) {
+                return adrService.fetchAdrVersionsBySlug(namespace, resourceID);
+            }
             return (await adrService.fetchAdrRevisions(namespace, resourceID))
                 .filter((rev) => rev != null)
                 .map((rev) => rev.toString());

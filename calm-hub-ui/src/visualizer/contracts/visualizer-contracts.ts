@@ -32,6 +32,8 @@ export type PositionsChangeHandler = (positions: StoredNodePosition[]) => void;
 export interface DrawerProps {
     data?: Data;
     onItemSelect?: (item: SelectedItem) => void;
+    /** `unique-id` of the selected node or relationship, so the ADRs tab can show its ADRs. */
+    selectedElementId?: string;
     decorators?: Decorator[];
     /**
      * Overrides Drawer's own `${data.name}/${data.calmType}/${data.id}` viewport
@@ -145,5 +147,20 @@ export type MetadataPanelTabType = 'evaluations' | 'controls' | 'deployment' | '
  * Props for AdrsPanel component
  */
 export interface AdrsPanelProps {
+    /** Architecture-level ADRs. */
+    adrs: string[];
+    /** Nodes and relationships that carry their own ADRs. */
+    elementAdrs?: ElementAdrs[];
+    /** `unique-id` of the selected node or relationship. */
+    selectedElementId?: string;
+}
+
+/**
+ * The ADRs of one node or relationship
+ */
+export interface ElementAdrs {
+    id: string;
+    name: string;
+    kind: 'node' | 'relationship';
     adrs: string[];
 }

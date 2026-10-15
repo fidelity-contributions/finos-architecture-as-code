@@ -53,8 +53,9 @@ vi.mock('../../../service/interface-service.js', () => ({
 
 vi.mock('../../../service/adr-service/adr-service.js', () => ({
     AdrService: vi.fn().mockImplementation(function () { return ({
-        fetchAdrSummaries: vi.fn().mockResolvedValue([]),
+        fetchAdrSummaries: vi.fn().mockResolvedValue([{ id: 4, slug: 'use-oauth2', title: 'Use OAuth2', status: 'accepted' }]),
         fetchAdrRevisions: vi.fn().mockResolvedValue([]),
+        fetchAdrVersionsBySlug: vi.fn().mockResolvedValue(['1', '2']),
         fetchAdr: vi.fn().mockResolvedValue({}),
     }); }),
 }));
@@ -181,6 +182,21 @@ describe('MobileNavMenu', () => {
             expect(navigate).toHaveBeenCalledWith('/traderx/architectures/1/1.0.0');
         });
         expect(props.onClose).toHaveBeenCalled();
+    });
+
+    it('navigates to an ADR by its slug', async () => {
+        const navigate = vi.fn();
+        (useNavigate as Mock).mockReturnValue(navigate);
+        renderMenu();
+
+        fireEvent.click(screen.getByText('Namespaces'));
+        fireEvent.click(await screen.findByText('traderx'));
+        fireEvent.click(await screen.findByText('ADRs'));
+        fireEvent.click(await screen.findByText('Use OAuth2 (accepted)'));
+
+        await waitFor(() => {
+            expect(navigate).toHaveBeenCalledWith('/traderx/adrs/use-oauth2/2');
+        });
     });
 
     it('drills into control domains and lists controls', async () => {

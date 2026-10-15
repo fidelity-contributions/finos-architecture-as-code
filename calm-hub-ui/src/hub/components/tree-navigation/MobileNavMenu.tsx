@@ -153,7 +153,7 @@ export function MobileNavMenu({
             } else if (type === 'ADRs') {
                 adrService
                     .fetchAdrSummaries(namespace)
-                    .then((adrs) => finish(adrs.map((a) => ({ id: a.id.toString(), name: `${a.title} (${a.status})` }))))
+                    .then((adrs) => finish(adrs.map((a) => ({ id: a.slug ?? a.id.toString(), name: `${a.title} (${a.status})` }))))
                     .catch(() => finish([]));
             } else {
                 const fetcher =

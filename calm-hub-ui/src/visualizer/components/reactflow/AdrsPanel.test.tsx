@@ -1,7 +1,19 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, within, fireEvent } from '@testing-library/react';
 import { describe, it, expect } from 'vitest';
 import { AdrsPanel } from './AdrsPanel';
 import { getAdrDisplayName, isCalmHubAdr, toAdrAppRoute } from './adr-utils';
+import type { ElementAdrs } from '../../contracts/contracts';
+import { THEME } from './theme';
+
+const elementAdrs: ElementAdrs[] = [
+    { id: 'api', name: 'Payments API', kind: 'node', adrs: ['finos:adrs:use-oauth2@3'] },
+    {
+        id: 'api-db',
+        name: 'API to DB',
+        kind: 'relationship',
+        adrs: ['/calm/namespaces/finos/adrs/use-tls/versions/1', 'https://example.com/adr/0007-pooling.md'],
+    },
+];
 
 describe('AdrsPanel', () => {
     it('renders nothing when adrs is empty', () => {
@@ -61,6 +73,68 @@ describe('AdrsPanel', () => {
         const links = screen.getAllByRole('link');
         expect(links).toHaveLength(4);
         expect(screen.getByText('Architecture Decision Records (4)')).toBeInTheDocument();
+    });
+});
+
+describe('AdrsPanel node-level ADRs', () => {
+    it('renders node-level ADRs when only elements carry ADRs', () => {
+        render(<AdrsPanel adrs={[]} elementAdrs={[elementAdrs[0]]} />);
+
+        expect(screen.getByText('Architecture Decision Records (1)')).toBeInTheDocument();
+        const section = screen.getByRole('region', { name: 'Node: Payments API' });
+        expect(within(section).getByRole('link', { name: /use-oauth2 rev 3 \(finos\)/ })).toHaveAttribute(
+            'href',
+            '#/finos/adrs/use-oauth2/3'
+        );
+    });
+
+    it('lists architecture ADRs then every element when nothing is selected', () => {
+        render(<AdrsPanel adrs={['/api/calm/namespaces/finos/adrs/42']} elementAdrs={elementAdrs} />);
+
+        expect(screen.getByText('Architecture Decision Records (4)')).toBeInTheDocument();
+        const titles = screen.getAllByRole('heading', { level: 4 }).map((h) => h.textContent);
+        expect(titles).toEqual(['Architecture', 'Node: Payments API', 'Relationship: API to DB']);
+    });
+
+    it('shows the selected node ADRs first, then the architecture ADRs', () => {
+        render(
+            <AdrsPanel adrs={['/api/calm/namespaces/finos/adrs/42']} elementAdrs={elementAdrs} selectedElementId="api" />
+        );
+
+        expect(screen.getByText('Architecture Decision Records (2)')).toBeInTheDocument();
+        const titles = screen.getAllByRole('heading', { level: 4 }).map((h) => h.textContent);
+        expect(titles).toEqual(['Node: Payments API', 'Architecture']);
+        expect(screen.queryByText('Relationship: API to DB')).not.toBeInTheDocument();
+    });
+
+    it('shows the selected relationship ADRs', () => {
+        render(<AdrsPanel adrs={[]} elementAdrs={elementAdrs} selectedElementId="api-db" />);
+
+        const section = screen.getByRole('region', { name: 'Relationship: API to DB' });
+        expect(within(section).getByRole('link', { name: /use-tls rev 1 \(finos\)/ })).toHaveAttribute(
+            'href',
+            '#/finos/adrs/use-tls/1'
+        );
+        expect(within(section).getByRole('link', { name: /0007-pooling.md/ })).toHaveAttribute('target', '_blank');
+    });
+
+    it('falls back to the full list when the selected element has no ADRs', () => {
+        render(<AdrsPanel adrs={[]} elementAdrs={elementAdrs} selectedElementId="other" />);
+        expect(screen.getByText('Architecture Decision Records (3)')).toBeInTheDocument();
+    });
+
+    it('omits the section title when only architecture ADRs exist', () => {
+        render(<AdrsPanel adrs={['https://example.com/adr/1.md']} elementAdrs={[]} />);
+        expect(screen.queryByRole('heading', { level: 4 })).not.toBeInTheDocument();
+    });
+
+    it('highlights a link on hover', () => {
+        render(<AdrsPanel adrs={['https://example.com/adr/1.md']} />);
+        const link = screen.getByRole('link');
+        fireEvent.mouseEnter(link);
+        expect(link).toHaveStyle({ background: THEME.colors.backgroundSecondary });
+        fireEvent.mouseLeave(link);
+        expect(link).toHaveStyle({ background: THEME.colors.card });
     });
 });
 

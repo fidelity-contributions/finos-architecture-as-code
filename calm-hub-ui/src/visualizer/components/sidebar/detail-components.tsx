@@ -3,6 +3,7 @@ import { AlertTriangle, AlertCircle, Shield, ArrowRight, type LucideIcon } from 
 import { getRiskLevelColor } from '../../../theme/helpers.js';
 import type { RiskItem, MitigationItem, ControlItem } from '../../contracts/contracts.js';
 import { formatFieldName } from './sidebar-utils.js';
+import { AdrLink } from '../reactflow/AdrLink.js';
 
 export { formatFieldName, getNodeIcon, extractAigf, getExtraProperties } from './sidebar-utils.js';
 export type { AigfData } from './sidebar-utils.js';
@@ -176,5 +177,21 @@ export function NodeList({ label, nodes }: { label: string; nodes: string[] }) {
                 ))}
             </div>
         </div>
+    );
+}
+
+export function AdrsSection({ adrs }: { adrs?: unknown }) {
+    const list = Array.isArray(adrs)
+        ? adrs.filter((adr): adr is string => typeof adr === 'string' && adr.trim().length > 0)
+        : [];
+    if (list.length === 0) return null;
+    return (
+        <Section title="ADRs">
+            <div className="flex flex-col gap-1.5">
+                {list.map((adr) => (
+                    <AdrLink key={adr} adr={adr} />
+                ))}
+            </div>
+        </Section>
     );
 }

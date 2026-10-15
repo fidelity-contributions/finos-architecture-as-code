@@ -90,4 +90,66 @@ describe('Adr Service ', () => {
             ).rejects.toThrowError();
         }
     );
+
+    describe('slug-based lookups', () => {
+        const mappings = { values: [{ customId: 'use-oauth2', numericId: 7 }, { customId: 'use-tls', numericId: 9 }] };
+
+        it('resolves a slug to its numeric id', async () => {
+            mock.onGet(`/calm/namespaces/${namespace}/adrs`).reply(200, mappings);
+            await expect(adrService.fetchAdrIdForSlug(namespace, 'use-tls')).resolves.toBe(9);
+        });
+
+        it('rejects an unknown slug', async () => {
+            mock.onGet(`/calm/namespaces/${namespace}/adrs`).reply(200, mappings);
+            await expect(adrService.fetchAdrIdForSlug(namespace, 'missing')).rejects.toThrow(
+                `Error resolving ADR slug missing in namespace ${namespace}:`
+            );
+        });
+
+        it('rejects when the mapping list has no values', async () => {
+            mock.onGet(`/calm/namespaces/${namespace}/adrs`).reply(200, {});
+            await expect(adrService.fetchAdrIdForSlug(namespace, 'use-tls')).rejects.toThrow();
+        });
+
+        it('fetches the versions of an ADR by slug as strings', async () => {
+            mock.onGet(`/calm/namespaces/${namespace}/adrs/use-oauth2/versions`).reply(200, { values: [1, '2'] });
+            await expect(adrService.fetchAdrVersionsBySlug(namespace, 'use-oauth2')).resolves.toEqual(['1', '2']);
+        });
+
+        it('returns no versions when the response has none', async () => {
+            mock.onGet(`/calm/namespaces/${namespace}/adrs/use-oauth2/versions`).reply(200, {});
+            await expect(adrService.fetchAdrVersionsBySlug(namespace, 'use-oauth2')).resolves.toEqual([]);
+        });
+
+        it('rejects when the versions request fails', async () => {
+            mock.onGet(`/calm/namespaces/${namespace}/adrs/use-oauth2/versions`).reply(404);
+            await expect(adrService.fetchAdrVersionsBySlug(namespace, 'use-oauth2')).rejects.toThrow(
+                'Error fetching versions for ADR use-oauth2:'
+            );
+        });
+    });
+
+    describe('fetchAdrByReference', () => {
+        it('fetches a numeric id and revision from the storage API', async () => {
+            mock.onGet(`/api/calm/namespaces/${namespace}/adrs/1/revisions/2`).reply(200, expectedAdr);
+            await expect(adrService.fetchAdrByReference(namespace, '1', '2')).resolves.toEqual(expectedAdr);
+        });
+
+        it('resolves a slug to its numeric id first', async () => {
+            mock.onGet(`/calm/namespaces/${namespace}/adrs`).reply(200, { values: [{ customId: 'use-oauth2', numericId: 7 }] });
+            mock.onGet(`/api/calm/namespaces/${namespace}/adrs/7/revisions/3`).reply(200, expectedAdr);
+            await expect(adrService.fetchAdrByReference(namespace, 'use-oauth2', '3')).resolves.toEqual(expectedAdr);
+        });
+
+        it('loads the newest revision for latest', async () => {
+            mock.onGet(`/api/calm/namespaces/${namespace}/adrs/1/revisions`).reply(200, { values: [1, 10, 2] });
+            mock.onGet(`/api/calm/namespaces/${namespace}/adrs/1/revisions/10`).reply(200, expectedAdr);
+            await expect(adrService.fetchAdrByReference(namespace, '1', 'latest')).resolves.toEqual(expectedAdr);
+        });
+
+        it('rejects latest when the ADR has no revisions', async () => {
+            mock.onGet(`/api/calm/namespaces/${namespace}/adrs/1/revisions`).reply(200, { values: [] });
+            await expect(adrService.fetchAdrByReference(namespace, '1', 'latest')).rejects.toThrow('ADR 1 has no revisions');
+        });
+    });
 });

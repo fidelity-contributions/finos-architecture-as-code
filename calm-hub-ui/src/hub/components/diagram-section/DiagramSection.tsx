@@ -40,6 +40,8 @@ import { USED_BY_TOOLTIP, usedByLabel } from './used-by/usedBy.js';
 interface DiagramSectionProps {
     data: Data & { calmType: 'Architectures' | 'Patterns' };
     onItemSelect?: (item: SelectedItem) => void;
+    /** `unique-id` of the node or relationship open in the details panel. */
+    selectedElementId?: string;
     hasDetailsPanel?: boolean;
     breadcrumbs?: BreadcrumbItem[];
     /**
@@ -729,6 +731,7 @@ export function DiagramSection({ data, onItemSelect, hasDetailsPanel, breadcrumb
             <Drawer
                 data={data}
                 onItemSelect={onItemSelect}
+                selectedElementId={selectedElementId}
                 decorators={decorators}
                 viewportKeyOverride={defaultLayoutState.viewportKey}
                 defaultLayout={defaultLayoutState.defaultLayout}

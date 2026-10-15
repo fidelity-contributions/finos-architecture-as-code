@@ -24,6 +24,30 @@ describe('resolveResourceDetailPath', () => {
         expect(path).toBe('/traderx/architectures/1/2.0.0');
     });
 
+    it('resolves the latest revision of an ADR by slug through the name-based API', async () => {
+        const calmService = {} as CalmService;
+        const adrService = {
+            fetchAdrVersionsBySlug: vi.fn().mockResolvedValue(['1', '3', '2']),
+        } as unknown as AdrService;
+
+        const path = await resolveResourceDetailPath('use-oauth2', 'ADRs', 'finos', calmService, adrService);
+
+        expect(adrService.fetchAdrVersionsBySlug).toHaveBeenCalledWith('finos', 'use-oauth2');
+        expect(path).toBe('/finos/adrs/use-oauth2/3');
+    });
+
+    it('resolves the latest revision of an ADR by numeric id through the storage API', async () => {
+        const calmService = {} as CalmService;
+        const adrService = {
+            fetchAdrRevisions: vi.fn().mockResolvedValue([1, 2]),
+        } as unknown as AdrService;
+
+        const path = await resolveResourceDetailPath('5', 'ADRs', 'finos', calmService, adrService);
+
+        expect(adrService.fetchAdrRevisions).toHaveBeenCalledWith('finos', '5');
+        expect(path).toBe('/finos/adrs/5/2');
+    });
+
     it('returns null when no versions are found', async () => {
         const calmService = {
             fetchArchitectureVersions: vi.fn().mockResolvedValue([]),

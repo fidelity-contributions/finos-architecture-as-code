@@ -34,6 +34,30 @@ describe('NodeDetails', () => {
         expect(screen.getByText('A service node')).toBeInTheDocument();
     });
 
+    it('renders node-level ADRs as links, not as a property', () => {
+        render(
+            <NodeDetails
+                data={{
+                    ...baseNode,
+                    adrs: ['finos:adrs:use-oauth2@3', 'https://github.com/org/project/docs/adr/0002-cache.md'],
+                }}
+            />
+        );
+
+        expect(screen.getByText('ADRs')).toBeInTheDocument();
+        expect(screen.getByRole('link', { name: /use-oauth2 rev 3 \(finos\)/ })).toHaveAttribute(
+            'href',
+            '#/finos/adrs/use-oauth2/3'
+        );
+        expect(screen.getByRole('link', { name: /0002-cache.md/ })).toHaveAttribute('target', '_blank');
+        expect(screen.queryByText('Properties')).not.toBeInTheDocument();
+    });
+
+    it('renders no ADRs section when the node has none', () => {
+        render(<NodeDetails data={{ ...baseNode, adrs: [] }} />);
+        expect(screen.queryByText('ADRs')).not.toBeInTheDocument();
+    });
+
     it('renders the node type badge', () => {
         render(<NodeDetails data={baseNode} />);
 

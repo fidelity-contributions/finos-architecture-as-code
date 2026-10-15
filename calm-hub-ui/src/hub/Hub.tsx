@@ -405,6 +405,7 @@ export default function Hub() {
             key={`${data.calmType}:${data.name}:${data.id}`}
             data={data}
             onItemSelect={handleItemSelect}
+            selectedElementId={selectedItem?.data['unique-id']}
             hasDetailsPanel={!!selectedItem}
             breadcrumbs={breadcrumbs}
             onDisplayNameChange={handleDisplayNameChange}

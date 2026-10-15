@@ -37,9 +37,20 @@ function extractId(item: CalmNodeSchema | CalmRelationshipSchema): string {
     return item?.['unique-id'] || '';
 }
 
+function cleanAdrs(raw: unknown): string[] {
+    if (!Array.isArray(raw)) {
+        return [];
+    }
+    return raw
+        .filter((adr): adr is string => typeof adr === 'string')
+        .map((adr) => adr.trim())
+        .filter((adr) => adr.length > 0);
+}
+
 export function Drawer({
     data,
     onItemSelect,
+    selectedElementId,
     decorators: decoratorsProp,
     viewportKeyOverride,
     defaultLayout,
@@ -208,16 +219,26 @@ export function Drawer({
     );
 
 
-    const adrs = useMemo((): string[] => {
-        const calmData = calmInstance as CalmArchitectureSchema & { adrs?: unknown };
-        const rawAdrs = calmData?.adrs;
-        if (!Array.isArray(rawAdrs)) {
-            return [];
-        }
-        return rawAdrs
-            .filter((adr): adr is string => typeof adr === 'string')
-            .map((adr) => adr.trim())
-            .filter((adr) => adr.length > 0);
+    const adrs = useMemo(
+        (): string[] => cleanAdrs((calmInstance as CalmArchitectureSchema & { adrs?: unknown })?.adrs),
+        [calmInstance]
+    );
+
+    const elementAdrs = useMemo((): ElementAdrs[] => {
+        if (!calmInstance) return [];
+        const nodes: ElementAdrs[] = (calmInstance.nodes || []).map((node) => ({
+            id: extractId(node),
+            name: node.name || extractId(node),
+            kind: 'node',
+            adrs: cleanAdrs(node.adrs),
+        }));
+        const relationships: ElementAdrs[] = (calmInstance.relationships || []).map((relationship) => ({
+            id: extractId(relationship),
+            name: relationship.description || extractId(relationship),
+            kind: 'relationship',
+            adrs: cleanAdrs(relationship.adrs),
+        }));
+        return [...nodes, ...relationships].filter((element) => element.adrs.length > 0);
     }, [calmInstance]);
 
     const controls = useMemo((): Record<string, Control> => {
