@@ -261,7 +261,7 @@ export function diffNodesAndRelationships(
         if (valuesEqual(nodeA, nodeB)) {
             nodesSame.push(nodeA);
         } else {
-            nodesModified.push({ original: nodeA, updated: nodeB });
+            nodesModified.push(withAdrChanges({ original: nodeA, updated: nodeB }));
         }
     }
 
@@ -273,7 +273,7 @@ export function diffNodesAndRelationships(
         if (valuesEqual(edgeA, edgeB)) {
             edgesSame.push(edgeA);
         } else {
-            edgesModified.push({ original: edgeA, updated: edgeB });
+            edgesModified.push(withAdrChanges({ original: edgeA, updated: edgeB }));
         }
     }
 
@@ -293,6 +293,22 @@ export function diffNodesAndRelationships(
             relationships: invalidEdges,
         },
     };
+}
+
+function adrReferences(item: { adrs?: unknown }): string[] {
+    return Array.isArray(item.adrs) ? item.adrs.filter((adr): adr is string => typeof adr === 'string') : [];
+}
+
+/**
+ * Adds the ADR references that were added to or removed from a changed item's `adrs` array.
+ * Order is ignored: a reordered `adrs` array adds or removes nothing.
+ */
+function withAdrChanges<T extends NodeChange | RelationshipChange>(change: T): T {
+    const before = adrReferences(change.original);
+    const after = adrReferences(change.updated);
+    const added = after.filter((adr) => !before.includes(adr));
+    const removed = before.filter((adr) => !after.includes(adr));
+    return added.length + removed.length > 0 ? { ...change, adrs: { added, removed } } : change;
 }
 
 /**

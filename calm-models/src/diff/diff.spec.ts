@@ -310,6 +310,66 @@ describe('diff', () => {
         });
     });
 
+    describe('diffArchitectures - node and relationship ADR references', () => {
+        const node = (adrs?: string[]): CalmNodeSchema => ({
+            'unique-id': 'ledger',
+            'node-type': 'service',
+            name: 'Ledger',
+            description: 'Legacy ledger',
+            ...(adrs ? { adrs } : {}),
+        });
+        const relationship = (adrs?: string[]): CalmRelationshipSchema => ({
+            'unique-id': 'ledger-link',
+            'relationship-type': { connects: { source: { node: 'ledger' }, destination: { node: 'ledger' } } },
+            ...(adrs ? { adrs } : {}),
+        });
+        const architecture = (nodeAdrs?: string[], relationshipAdrs?: string[]): CalmArchitectureSchema => ({
+            nodes: [node(nodeAdrs)],
+            relationships: [relationship(relationshipAdrs)],
+        });
+
+        it('records ADR references added to a node', () => {
+            const result = diffArchitectures(architecture(), architecture(['finos:adrs:plain-http@1']));
+
+            expect(result.nodesModified).toHaveLength(1);
+            expect(result.nodesModified[0].adrs).toEqual({ added: ['finos:adrs:plain-http@1'], removed: [] });
+        });
+
+        it('records ADR references removed from and added to a node', () => {
+            const result = diffArchitectures(
+                architecture(['finos:adrs:plain-http@1', 'finos:adrs:keep@1']),
+                architecture(['finos:adrs:keep@1', 'finos:adrs:plain-http@2'])
+            );
+
+            expect(result.nodesModified[0].adrs).toEqual({ added: ['finos:adrs:plain-http@2'], removed: ['finos:adrs:plain-http@1'] });
+        });
+
+        it('records ADR references removed from a relationship', () => {
+            const result = diffArchitectures(architecture(undefined, ['finos:adrs:plain-http@1']), architecture());
+
+            expect(result.edgesModified).toHaveLength(1);
+            expect(result.edgesModified[0].adrs).toEqual({ added: [], removed: ['finos:adrs:plain-http@1'] });
+        });
+
+        it('does not record ADR changes when only the order or other fields change', () => {
+            const before = architecture(['a', 'b']);
+            const after: CalmArchitectureSchema = { ...architecture(['b', 'a']), nodes: [{ ...node(['b', 'a']), name: 'Ledger v2' }] };
+
+            const result = diffArchitectures(before, after);
+
+            expect(result.nodesModified).toHaveLength(1);
+            expect(result.nodesModified[0].adrs).toBeUndefined();
+            expect(result.edgesModified).toHaveLength(0);
+        });
+
+        it('ignores ADR entries that are not strings', () => {
+            const before = architecture();
+            const after: CalmArchitectureSchema = { ...before, nodes: [{ ...node(), adrs: [42 as unknown as string] }] };
+
+            expect(diffArchitectures(before, after).nodesModified[0].adrs).toBeUndefined();
+        });
+    });
+
     describe('diffArchitectures - ADR changes', () => {
         it('records unchanged and added ADRs when an ADR is added', () => {
             const result = diffArchitectures(testArchitectures.baseArchitecture, testArchitectures.adrAdditionArchitecture);

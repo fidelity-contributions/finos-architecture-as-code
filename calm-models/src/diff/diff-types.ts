@@ -5,14 +5,24 @@ import type {
     CalmRelationshipSchema,
 } from '../types/index.js';
 
+/** ADR references added to or removed from a node or relationship `adrs` array. */
+export interface AdrReferenceChanges {
+    added: string[];
+    removed: string[];
+}
+
 export interface NodeChange {
     original: CalmNodeSchema;
     updated: CalmNodeSchema;
+    /** Set only when the node's `adrs` entries changed. */
+    adrs?: AdrReferenceChanges;
 }
 
 export interface RelationshipChange {
     original: CalmRelationshipSchema;
     updated: CalmRelationshipSchema;
+    /** Set only when the relationship's `adrs` entries changed. */
+    adrs?: AdrReferenceChanges;
 }
 
 export interface RenameMapping {

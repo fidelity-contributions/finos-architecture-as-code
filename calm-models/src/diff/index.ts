@@ -25,6 +25,7 @@ export {
 } from './architecture-resolver.js';
 export type {
     AdrDiffResult,
+    AdrReferenceChanges,
     ArchitectureDiffResult,
     ControlDiffResult,
     MetadataItemDiffResult,
