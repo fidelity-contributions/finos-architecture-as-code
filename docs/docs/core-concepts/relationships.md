@@ -25,7 +25,6 @@ Relationships in CALM have several properties that capture the nature and specif
 - **description**: Provides additional context about the nature of the relationship.
 - **protocol**: Defines the protocol used in the connection, such as HTTP, HTTPS, or WebSocket.
 - **controls**: Optional policies or constraints that apply to the relationship, such as encryption requirements.
-- **adrs**: Optional; references to the [Architecture Decision Records](adrs) about this relationship. Needs the upcoming CALM schema release.
 
 ### Example of a Relationship Definition
 

@@ -9,7 +9,7 @@ sidebar_position: 12
 An Architecture Decision Record (ADR) records one architecture decision: the context, the options that were considered, and the option that was chosen. CALM Hub stores ADRs per namespace, and a CALM document refers to them by URL or CURIE.
 
 :::info Schema Version
-The `adr.json` meta-schema, and the `adrs` properties on nodes, relationships and controls, are a **draft**. They need the upcoming CALM schema release. Until it ships, see the draft in [`calm/draft/adr-support`](https://github.com/finos/architecture-as-code/tree/main/calm/draft/adr-support).
+The `adr.json` meta-schema and the control compliance `status` and `adrs` properties are a **draft**. They need the upcoming CALM schema release. Until it ships, see the draft in [`calm/draft/adr-support`](https://github.com/finos/architecture-as-code/tree/main/calm/draft/adr-support).
 :::
 
 ## The ADR format
@@ -55,10 +55,7 @@ You can put ADR references in these places:
 | Where | Use |
 |-------|-----|
 | Architecture `adrs` | Decisions about the whole architecture |
-| Node or relationship `adrs` | Decisions about one node or relationship |
 | Control requirement `adrs` | The decision that justifies how a control is met, or why it is not met. See [Controls](controls.md#compliance-status) |
-
-`calm diff` reports ADR references that are added to or removed from nodes and relationships.
 
 ## Working with ADRs
 
@@ -66,4 +63,4 @@ You can put ADR references in these places:
 - `calm hub list adrs`, `calm hub pull adr` and `calm hub push adr` read and write ADRs in CALM Hub. See [Managing ADRs](../working-with-calm/cli.md#managing-adrs).
 - `calm workspace push` pushes the ADRs in a workspace. CALM Hub assigns their revisions.
 
-For a complete example, see the prototypes in [`calm/draft/adr-support/prototype`](https://github.com/finos/architecture-as-code/tree/main/calm/draft/adr-support/prototype): an architecture with node, relationship and control ADR references, and the ADR that justifies its non-compliant control.
+For a complete example, see the prototypes in [`calm/draft/adr-support/prototype`](https://github.com/finos/architecture-as-code/tree/main/calm/draft/adr-support/prototype): an architecture with control ADR references, and the ADR that justifies its non-compliant control.

@@ -37,7 +37,6 @@ export type CalmNodeSchema = {
     interfaces?: CalmInterfaceSchema[];
     controls?: CalmControlsSchema;
     metadata?: CalmMetadataSchema;
-    adrs?: string[];
     [key: string]: unknown; // Additional properties can be added
 };
 
@@ -100,7 +99,6 @@ export type CalmRelationshipSchema = {
     protocol?: CalmProtocolSchema;
     metadata?: CalmMetadataSchema;
     controls?: CalmControlsSchema;
-    adrs?: string[];
     [key: string]: unknown;
 };
 

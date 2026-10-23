@@ -25,8 +25,7 @@ implements CalmAdaptable<CalmRelationshipSchema, CalmRelationshipCanonicalModel>
         public controls?: CalmControls,
         public additionalProperties?: Record<string, unknown>,
         public description?: string,
-        public protocol?: string,
-        public adrs?: string[]
+        public protocol?: string
     ) {}
 
     toCanonicalSchema(): CalmRelationshipCanonicalModel {
@@ -37,7 +36,6 @@ implements CalmAdaptable<CalmRelationshipSchema, CalmRelationshipCanonicalModel>
             'controls': this.controls ? this.controls.toCanonicalSchema() : undefined,
             'description': this.description,
             'protocol': this.protocol,
-            ...(this.adrs !== undefined ? { 'adrs': this.adrs } : {}),
             ...this.additionalProperties
         };
     }
@@ -54,7 +52,6 @@ implements CalmAdaptable<CalmRelationshipSchema, CalmRelationshipCanonicalModel>
             'protocol': protocol,
             'metadata': metadata,
             'controls': controls,
-            'adrs': adrs,
             ...additionalProps
         } = schema;
 
@@ -66,8 +63,7 @@ implements CalmAdaptable<CalmRelationshipSchema, CalmRelationshipCanonicalModel>
             controls ? CalmControls.fromSchema(controls) : undefined,
             additionalProps,
             description,
-            protocol,
-            adrs
+            protocol
         );
     }
 

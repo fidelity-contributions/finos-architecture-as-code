@@ -393,24 +393,6 @@ describe('diff core', () => {
         expect(result.formatted).toContain('Nodes added:');
     });
 
-    it('reports ADR references added to and removed from nodes and relationships', async () => {
-        const { diffDocuments } = await import('./diff-core');
-        const edge = { 'unique-id': 'a-to-a', 'relationship-type': { connects: { source: { node: 'a' }, destination: { node: 'a' } } } };
-        const before = { nodes: [{ ...archA.nodes[0], adrs: ['finos:adrs:old@1'] }], relationships: [edge] };
-        const after = { nodes: [{ ...archA.nodes[0], adrs: ['finos:adrs:new@1'] }], relationships: [{ ...edge, adrs: ['finos:adrs:link@2'] }] };
-
-        const result = diffDocuments(before, after, { format: 'summary' });
-
-        expect(result.hasChanges).toBe(true);
-        expect(result.diff.nodesModified[0].adrs).toEqual({ added: ['finos:adrs:new@1'], removed: ['finos:adrs:old@1'] });
-        expect(result.formatted).toContain('Node ADRs:     +1  -1');
-        expect(result.formatted).toContain('Relationship ADRs: +1  -0');
-        expect(result.formatted).toContain('Node ADRs added:\n  - a: finos:adrs:new@1');
-        expect(result.formatted).toContain('Node ADRs removed:\n  - a: finos:adrs:old@1');
-        expect(result.formatted).toContain('Relationship ADRs added:\n  - a-to-a: finos:adrs:link@2');
-        expect(result.formatted).not.toContain('Relationship ADRs removed:');
-    });
-
     it('uses labels in the mismatch error instead of file paths', async () => {
         const { diffDocuments } = await import('./diff-core');
         expect(() => diffDocuments(archA, archB, { documentType: 'pattern', labels: ['left.json', 'right.json'] }))

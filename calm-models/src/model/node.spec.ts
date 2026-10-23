@@ -297,23 +297,4 @@ describe('CalmNode', () => {
         expect(node.toCanonicalSchema().additionalProperties).toEqual({ foo: 'bar', bar: 42 });
     });
 
-    it('models adrs on the node, not in additionalProperties', () => {
-        const schema: CalmNodeSchema = {
-            'unique-id': 'payment-service',
-            'node-type': 'service',
-            name: 'Payment Service',
-            description: 'Processes payments',
-            adrs: ['finos:adrs:use-oauth2@1'],
-        };
-        const node = CalmNode.fromSchema(schema);
-        expect(node.adrs).toEqual(['finos:adrs:use-oauth2@1']);
-        expect(node.additionalProperties).toBeUndefined();
-        expect(node.toCanonicalSchema().adrs).toEqual(['finos:adrs:use-oauth2@1']);
-        expect(node.toSchema()).toBe(schema);
-    });
-
-    it('leaves adrs out of the canonical model when the node has none', () => {
-        const node = CalmNode.fromSchema({ 'unique-id': 'n', 'node-type': 'service', name: 'N', description: 'N' });
-        expect(Object.keys(node.toCanonicalSchema())).not.toContain('adrs');
-    });
 });

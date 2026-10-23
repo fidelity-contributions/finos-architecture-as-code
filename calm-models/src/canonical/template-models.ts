@@ -16,7 +16,6 @@ export type CalmNodeCanonicalModel = {
     interfaces?: CalmInterfaceCanonicalModel[];
     controls?: CalmControlsCanonicalModel;
     metadata?: CalmMetadataCanonicalModel;
-    adrs?: string[];
 } & Record<string, unknown>;
 
 export type CalmTimelineCanonicalModel = {
@@ -53,7 +52,6 @@ export type CalmRelationshipCanonicalModel = {
     protocol?: string;
     metadata?: CalmMetadataCanonicalModel;
     controls?: CalmControlsCanonicalModel;
-    adrs?: string[];
 } & Record<string, unknown>;
 
 export type CalmFlowCanonicalModel = {

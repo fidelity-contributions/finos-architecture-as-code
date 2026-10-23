@@ -337,7 +337,7 @@ describe('runValidate', () => {
         expect(mocks.getSchema).toHaveBeenCalledWith(ADR_SCHEMA_ID);
         expect(mocks.validateAdr).toHaveBeenCalledWith(dummyAdr, dummyAdrSchema, expect.anything(), false);
         expect(validate).not.toHaveBeenCalled();
-        expect(exitBasedOffOfValidationOutcome).toHaveBeenCalledWith(fakeOutcome, true);
+        expect(mocks.processExit).toHaveBeenCalledWith(0);
         expect(writeFileSync).toHaveBeenCalledWith('out.json', 'formatted output');
     });
 
