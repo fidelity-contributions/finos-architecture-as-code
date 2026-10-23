@@ -4,13 +4,13 @@ import { extractRelationshipType } from '../reactflow/utils/calmHelpers.js';
 import type { ControlItem } from '../../contracts/contracts.js';
 import {
     Badge, RiskLevelBadge, Section,
-    PropertiesSection, ControlsSection, AdrsSection, RisksSection, MitigationsSection,
+    PropertiesSection, ControlsSection, RisksSection, MitigationsSection,
     ConnectionDiagram, NodeList,
     extractAigf, getExtraProperties,
 } from './detail-components.js';
 
 const KNOWN_FIELDS = new Set([
-    'unique-id', 'description', 'relationship-type', 'protocol', 'controls', 'metadata', 'adrs',
+    'unique-id', 'description', 'relationship-type', 'protocol', 'controls', 'metadata',
 ]);
 
 function getRelTypeInfo(relType: ReturnType<typeof extractRelationshipType>) {
@@ -130,7 +130,6 @@ export function RelationshipDetails({ data }: { data: CalmRelationshipSchema }) 
 
             <PropertiesSection properties={extraProps} />
             <ControlsSection controls={controls} />
-            <AdrsSection adrs={data.adrs} />
             <RisksSection risks={risks} riskLevel={riskLevel} />
             <MitigationsSection mitigations={mitigations} />
         </div>

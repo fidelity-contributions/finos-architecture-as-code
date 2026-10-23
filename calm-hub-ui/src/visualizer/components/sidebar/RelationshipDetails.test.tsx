@@ -22,21 +22,6 @@ describe('RelationshipDetails', () => {
         expect(screen.getByText('Service to DB')).toBeInTheDocument();
     });
 
-    it('renders relationship-level ADRs as links', () => {
-        render(
-            <RelationshipDetails
-                data={{ ...connectsRelationship, adrs: ['/calm/namespaces/finos/adrs/use-tls/versions/1', ' '] }}
-            />
-        );
-
-        expect(screen.getByText('ADRs')).toBeInTheDocument();
-        expect(screen.getAllByRole('link')).toHaveLength(1);
-        expect(screen.getByRole('link', { name: /use-tls rev 1 \(finos\)/ })).toHaveAttribute(
-            'href',
-            '#/finos/adrs/use-tls/1'
-        );
-    });
-
     it('renders connects type badge and connection diagram', () => {
         render(<RelationshipDetails data={connectsRelationship} />);
 

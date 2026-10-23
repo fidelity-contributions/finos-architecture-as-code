@@ -94,7 +94,7 @@ export function MetadataPanel({
                     {hasControls && hasDeployment && <span style={{ color: THEME.colors.muted }}>•</span>}
                     {hasDeployment && <span>Deployment ({decorators.length})</span>}
                     {(hasControls || hasDeployment) && hasAdrs && <span style={{ color: THEME.colors.muted }}>•</span>}
-                    {hasAdrs && <span>ADRs ({adrCount})</span>}
+                    {hasAdrs && <span>ADRs ({adrs.length})</span>}
                 </div>
                 <button
                     onClick={onToggleCollapse}

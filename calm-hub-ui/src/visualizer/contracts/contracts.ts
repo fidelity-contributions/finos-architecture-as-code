@@ -38,7 +38,6 @@ export type {
     MetadataPanelProps,
     MetadataPanelTabType,
     AdrsPanelProps,
-    ElementAdrs,
 } from './visualizer-contracts.js';
 export type {
     ControlsPanelHeaderProps,
