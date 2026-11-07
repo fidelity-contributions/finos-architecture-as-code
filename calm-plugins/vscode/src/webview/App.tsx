@@ -103,7 +103,6 @@ function CanvasApp() {
     const [panelWidth, setPanelWidth] = useState(280);
     const [panelCollapsed, setPanelCollapsed] = useState(false);
     const [showPatternPicker, setShowPatternPicker] = useState(false);
-    const [patternPickerMode, setPatternPickerMode] = useState<'new' | 'apply'>('new');
     const [showStandardNodeCreator, setShowStandardNodeCreator] = useState(false);
     const [showControlCreator, setShowControlCreator] = useState(false);
     const [showControlPicker, setShowControlPicker] = useState(false);
@@ -114,6 +113,7 @@ function CanvasApp() {
         | null
     >(null);
     const [expandControlKey, setExpandControlKey] = useState<string | null>(null);
+    const [showClearConfirm, setShowClearConfirm] = useState(false);
 
     // Undo/redo
     const undoStack = useRef<string[]>([]);
@@ -836,20 +836,7 @@ function CanvasApp() {
     }, [setEdges, emitChange, store.readonlyMode]);
 
     // --- Pattern handlers ---
-    const handlePatterns = useCallback(() => { setPatternPickerMode('new'); setShowPatternPicker(true); }, []);
-    const handleApplyPattern = useCallback(() => { setPatternPickerMode('apply'); setShowPatternPicker(true); }, []);
-    const handleArchApply = useCallback((arch: any, patternId?: string) => {
-        if (patternId) {
-            const metadata = (arch.metadata ?? {}) as Record<string, unknown>;
-            const patterns = (metadata.patterns as string[]) ?? [];
-            if (!patterns.includes(patternId)) patterns.push(patternId);
-            metadata.patterns = patterns;
-            arch.metadata = metadata;
-        }
-        const json = JSON.stringify(arch, null, 2);
-        loadArchitecture(json);
-        notifyCanvasChanged(json);
-    }, [loadArchitecture]);
+    const handleApplyPattern = useCallback(() => { setShowPatternPicker(true); }, []);
 
     const handlePatternMerge = useCallback((arch: any, patternId: string) => {
         const current = flowToCalm(nodes, edges, store.documentControls) as Record<string, unknown>;
@@ -949,6 +936,20 @@ function CanvasApp() {
         postMessage({ type: 'requestExportPattern', doc: JSON.stringify(doc) });
     }, [reactFlowInstance]);
 
+    // --- Clear canvas ---
+    const confirmClear = useCallback(() => {
+        setShowClearConfirm(false);
+        if (lastEmittedJson.current !== null) {
+            undoStack.current.push(lastEmittedJson.current);
+            if (undoStack.current.length > 50) undoStack.current.shift();
+            redoStack.current = [];
+        }
+        const emptyJson = '{}';
+        loadArchitecture(emptyJson);
+        notifyCanvasChanged(emptyJson);
+        suppressFileUpdatesUntil.current = Date.now() + SUPPRESS_ECHO_MS;
+    }, [loadArchitecture]);
+
     if (!initialized) {
         return <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', color: 'var(--calm-fg-muted)' }}>Loading CALM architecture...</div>;
     }
@@ -971,15 +972,31 @@ function CanvasApp() {
                     )}
                     <button onClick={handleExportSvg} className="calm-toolbar-btn" title="Export the canvas as an SVG">Export SVG</button>
                     {!store.readonlyMode && (
-                        <button onClick={() => notifyRequestImportSvg()} className="calm-toolbar-btn" title="Import an SVG diagram as CALM architecture">Import SVG</button>
-                    )}
-                    {!store.readonlyMode && (
                         <ToolbarMenu items={[
-                            { label: 'New from Pattern', onClick: handlePatterns },
+                            { label: 'Import SVG', onClick: () => notifyRequestImportSvg() },
                             { label: 'Create Node', onClick: () => setShowStandardNodeCreator(true) },
                             { label: 'Create Control', onClick: () => setShowControlCreator(true) },
                             { label: 'Export as Pattern', onClick: handleExportAsPattern },
                         ]} />
+                    )}
+                    {!store.readonlyMode && (
+                        <>
+                            <span className="fid-toolbar-sep" />
+                            <button
+                                onClick={() => setShowClearConfirm(true)}
+                                className="fid-toolbar-btn"
+                                title="Clear all architecture contents"
+                                style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: '3px 7px', color: '#e55', border: '1px solid #e55', borderRadius: '4px' }}
+                            >
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                    <line x1="10" y1="3" x2="16" y2="17" fill="none" />
+                                    <path d="M12.5 17l-1 4h11l-1-4z" fill="none" />
+                                    <line x1="5" y1="1" x2="5" y2="7" fill="none" />
+                                    <line x1="2" y1="4" x2="8" y2="4" fill="none" />
+                                    <circle cx="1.5" cy="11" r="1" stroke="none" />
+                                </svg>
+                            </button>
+                        </>
                     )}
                 </div>
             </div>
@@ -1022,7 +1039,7 @@ function CanvasApp() {
                     >
                         <Background />
                         <Controls />
-                        <MiniMap nodeClassName={minimapNodeClassName} />
+                        <MiniMap nodeClassName={minimapNodeClassName} style={{ transform: 'scale(0.8)', transformOrigin: 'bottom right' }} />
                     </ReactFlow>
 
                     {/* Validation Panel */}
@@ -1043,15 +1060,20 @@ function CanvasApp() {
                             </div>
                         </div>
                     )}
+                    {/* Collapsed properties tab */}
+                    {panelCollapsed && (
+                        <div onClick={() => setPanelCollapsed(false)} title="Show properties panel" role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter') setPanelCollapsed(false); }} style={collapsedPanelStyle}>
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <rect x="3" y="3" width="18" height="18" rx="2" />
+                                <line x1="15" y1="3" x2="15" y2="21" />
+                                <polyline points="10 8 7 12 10 16" />
+                            </svg>
+                        </div>
+                    )}
                 </div>
 
                 {/* Properties panel */}
-                {panelCollapsed ? (
-                    <button onClick={() => setPanelCollapsed(false)} title="Show properties panel" style={collapsedPanelStyle}>
-                        <span style={{ fontSize: '13px', color: 'var(--calm-fg)' }}>‹</span>
-                        <span style={collapsedLabelStyle}>PROPERTIES</span>
-                    </button>
-                ) : (
+                {!panelCollapsed && (
                     <div style={{ width: `${panelWidth}px`, minWidth: `${panelWidth}px`, display: 'flex', flexDirection: 'row', maxHeight: '100%', overflow: 'hidden' }}>
                         <div onMouseDown={handlePanelResizeStart} className="calm-resize-handle" title="Drag to resize" />
                         <div style={{ flex: 1, overflowY: 'auto', borderLeft: '1px solid var(--calm-border)', background: 'var(--calm-bg)' }}>
@@ -1135,12 +1157,8 @@ function CanvasApp() {
             {/* Pattern Picker */}
             <PatternPicker
                 visible={showPatternPicker}
-                mode={patternPickerMode}
                 patterns={store.loadedPatterns as any[]}
-                onApply={(arch, patternId) => {
-                    if (patternPickerMode === 'apply') handlePatternMerge(arch, patternId);
-                    else handleArchApply(arch, patternId);
-                }}
+                onApply={handlePatternMerge}
                 onClose={() => setShowPatternPicker(false)}
             />
 
@@ -1168,6 +1186,24 @@ function CanvasApp() {
                 visible={showControlCreator}
                 onClose={() => setShowControlCreator(false)}
             />
+
+            {/* Clear confirmation dialog */}
+            {showClearConfirm && (
+                <div style={clearOverlayStyle} role="dialog" aria-label="Clear architecture">
+                    <div style={clearModalStyle}>
+                        <div style={{ padding: '20px 24px 12px' }}>
+                            <h3 style={{ margin: '0 0 8px', fontSize: '14px', fontWeight: 600, color: 'var(--calm-fg)' }}>Clear Architecture</h3>
+                            <p style={{ margin: 0, fontSize: '12px', color: 'var(--calm-fg-muted)', lineHeight: 1.5 }}>
+                                This will remove all nodes, relationships, and controls. You can undo with Ctrl+Z / Cmd+Z.
+                            </p>
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', padding: '12px 24px 16px' }}>
+                            <button onClick={() => setShowClearConfirm(false)} style={clearCancelBtnStyle}>Cancel</button>
+                            <button onClick={confirmClear} style={clearConfirmBtnStyle}>Clear</button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
@@ -1179,11 +1215,14 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 const toolbarStyle: React.CSSProperties = { display: 'flex', alignItems: 'center', justifyContent: 'flex-start', padding: '6px 12px', background: 'var(--calm-bg-secondary)', borderBottom: '1px solid var(--calm-border)', flexShrink: 0 };
 const inputStyle: React.CSSProperties = { width: '100%', padding: '5px 8px', fontSize: '12px', color: 'var(--calm-fg)', background: 'var(--calm-bg-input)', border: '1px solid var(--calm-border-input)', borderRadius: '3px', outline: 'none', fontFamily: 'inherit' };
 const validationPanelStyle: React.CSSProperties = { position: 'absolute', bottom: 0, left: 0, right: 0, maxHeight: '40%', display: 'flex', flexDirection: 'column', background: 'var(--calm-bg)', borderTop: '1px solid var(--calm-border-heavy)', zIndex: 100, boxShadow: '0 -2px 8px var(--vscode-widget-shadow, rgba(0, 0, 0, 0.36))' };
-const collapsedPanelStyle: React.CSSProperties = { width: '30px', minWidth: '30px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', padding: '10px 0', border: 'none', borderLeft: '1px solid var(--calm-border)', background: 'var(--calm-bg-secondary)', cursor: 'pointer' };
-const collapsedLabelStyle: React.CSSProperties = { fontSize: '10px', fontWeight: 700, color: 'var(--calm-fg-muted)', writingMode: 'vertical-rl', letterSpacing: '1px' };
-const collapseToggleStyle: React.CSSProperties = { border: 'none', background: 'transparent', color: 'var(--calm-fg)', cursor: 'pointer', fontSize: '14px', lineHeight: 1, padding: '0 4px' };
+const collapsedPanelStyle: React.CSSProperties = { position: 'absolute', top: '8px', right: '8px', padding: '6px', color: '#ccc', background: 'var(--calm-bg-secondary)', border: '1px solid var(--calm-border)', borderRadius: '6px', cursor: 'pointer', zIndex: 10, display: 'flex', alignItems: 'center', justifyContent: 'center' };
+const collapseToggleStyle: React.CSSProperties = { border: '1px solid var(--calm-border)', background: 'var(--calm-bg-secondary)', color: 'var(--calm-fg)', cursor: 'pointer', fontSize: '16px', lineHeight: 1, padding: '2px 8px', borderRadius: '4px', flexShrink: 0 };
 const crumbStyle: React.CSSProperties = { background: 'none', border: 'none', cursor: 'pointer', color: 'var(--calm-link)', fontSize: '11px', padding: '2px 4px' };
 const unparentBtnStyle: React.CSSProperties = { marginTop: '8px', padding: '4px 10px', fontSize: '11px', color: 'var(--calm-link)', background: 'none', border: '1px solid var(--calm-link)', borderRadius: '4px', cursor: 'pointer' };
+const clearOverlayStyle: React.CSSProperties = { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 };
+const clearModalStyle: React.CSSProperties = { width: '380px', maxWidth: '90vw', background: 'var(--calm-bg)', border: '1px solid var(--calm-border-heavy)', borderRadius: '8px', boxShadow: '0 8px 32px rgba(0,0,0,0.3)' };
+const clearCancelBtnStyle: React.CSSProperties = { fontSize: '12px', padding: '6px 14px', cursor: 'pointer', background: 'var(--calm-bg-secondary)', color: 'var(--calm-fg)', border: '1px solid var(--calm-border)', borderRadius: '4px' };
+const clearConfirmBtnStyle: React.CSSProperties = { fontSize: '12px', fontWeight: 600, padding: '6px 14px', cursor: 'pointer', background: '#d33', color: '#fff', border: 'none', borderRadius: '4px' };
 
 export function App() {
     return <ReactFlowProvider><CanvasApp /></ReactFlowProvider>;
