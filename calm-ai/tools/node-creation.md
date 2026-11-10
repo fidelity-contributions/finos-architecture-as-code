@@ -247,6 +247,21 @@ Critical: Metadata can be either an array OR an object (see metadata creation to
 5. **Additional Properties**: Schema allows additional properties at node level (`"additionalProperties": true`)
 6. **Interfaces**: Must follow interface schema (use interface creation tool)
 
+## CURIE References
+
+CALM Hub resources can be referenced using CURIEs (Compact URIs) instead of full URLs:
+
+```
+{namespace}:{type}:{name}@{version}
+```
+
+Examples:
+- `finos:architectures:trading-system@1.0.0` (for `detailed-architecture`)
+- `finos:patterns:api-gateway@2.0.0` (for `required-pattern`)
+- `finos:adrs:use-oauth2@3` (in control `adrs[]`)
+
+CURIEs are resolved by `calm validate` when `--calm-hub-url` or `--assets-path` is set.
+
 ## Key Reminders
 
 - Always use the node creation tool before creating nodes

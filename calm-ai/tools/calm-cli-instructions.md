@@ -122,6 +122,63 @@ calm validate -a my-arch.json --strict -f pretty
 calm validate -p pattern.json -a arch.json -f junit -o results.xml
 ```
 
+## Validate ADRs
+
+Validate an Architecture Decision Record against the schema its `$schema` names:
+
+```shell
+calm validate --adr <file> [-s <schema-directory>] [-f <format>] [-v]
+```
+
+The `--adr` flag loads the ADR, resolves the schema from its `$schema` field, and checks both JSON Schema validity and the Spectral rule that `chosen-option` matches a `considered-options` entry.
+
+```shell
+calm validate --adr adrs/use-oauth2.json
+calm validate --adr adrs/use-oauth2.json -f pretty
+```
+
+> **Note:** `--adr` requires the CALM schema release that includes `adr.json`. Until then, use `-s` to point at a local schema directory that contains it.
+
+## Managing ADRs in CALM Hub
+
+List, fetch, and push ADRs using the `hub` command group:
+
+```shell
+# List ADRs in a namespace
+calm hub list adrs --namespace finos
+
+# Fetch an ADR by slug
+calm hub pull adr -m use-oauth2 --namespace finos
+
+# Fetch a specific revision
+calm hub pull adr -m use-oauth2 --ver 3 --namespace finos
+
+# Push an ADR to CALM Hub
+calm hub push adr adrs/use-oauth2.json --namespace finos
+```
+
+CALM Hub assigns the slug from the title on first create and assigns integer revisions. ADRs use the kebab-case `adr.json` format.
+
+## CURIE References
+
+CALM Hub resources can be referenced using CURIEs (Compact URIs) instead of full URLs. The format is:
+
+```
+{namespace}:{type}:{name}@{version}
+```
+
+| Resource | CURIE example |
+|----------|---------------|
+| Architecture | `finos:architectures:trading-system@1.0.0` |
+| Pattern | `finos:patterns:api-gateway@2.0.0` |
+| Flow | `finos:flows:trade-settlement@1.0.0` |
+| Standard | `finos:standards:tls-encryption@1.0.0` |
+| Interface | `finos:interfaces:rest-api@1.0.0` |
+| ADR | `finos:adrs:use-oauth2@3` |
+| Control | `security:controls:encryption-at-rest@1.0.0` |
+
+CURIEs are resolved by `calm validate` when `--calm-hub-url` or `--assets-path` is set. Use them in `$ref`, `requirement-url`, `adrs[]`, and other reference fields.
+
 ## AI Assistant Provider Setup
 
 Configure CALM-specific AI assistance inside a repo:

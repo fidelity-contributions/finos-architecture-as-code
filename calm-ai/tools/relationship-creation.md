@@ -273,6 +273,21 @@ Composition relationships:
 }
 ```
 
+## CURIE References
+
+CALM Hub resources can be referenced using CURIEs (Compact URIs) instead of full URLs:
+
+```
+{namespace}:{type}:{name}@{version}
+```
+
+Examples:
+- `finos:architectures:trading-system@1.0.0`
+- `finos:interfaces:rest-api@1.0.0`
+- `finos:adrs:use-oauth2@3` (in control `adrs[]`)
+
+CURIEs are resolved by `calm validate` when `--calm-hub-url` or `--assets-path` is set.
+
 ## Schema Validation Rules
 
 1. **Required Properties**: Must include `unique-id` and `relationship-type`

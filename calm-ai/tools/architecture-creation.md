@@ -25,9 +25,27 @@ Every CALM architecture MUST include:
     "nodes": [],
     "relationships": [],
     "flows": [],
-    "controls": {}
+    "controls": {},
+    "adrs": ["finos:adrs:use-oauth2@3", "finos:adrs:adopt-grpc@1"]
 }
 ```
+
+Top-level `adrs` references architecture-wide decisions. Use CURIEs (`{namespace}:adrs:{slug}@{revision}`) or canonical URLs. See **adr-creation.md** for ADR authoring.
+
+## CURIE References
+
+CALM Hub resources can be referenced using CURIEs (Compact URIs) instead of full URLs:
+
+```
+{namespace}:{type}:{name}@{version}
+```
+
+Examples:
+- `finos:architectures:trading-system@1.0.0`
+- `finos:patterns:api-gateway@2.0.0`
+- `finos:adrs:use-oauth2@3`
+
+CURIEs are resolved by `calm validate` when `--calm-hub-url` or `--assets-path` is set.
 
 ## Architecture Creation Checklist
 

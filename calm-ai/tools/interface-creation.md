@@ -193,6 +193,21 @@ Use **interface-type** when:
 - Basic endpoint references
 - Testing or examples (avoids URL validation)
 
+## CURIE References
+
+CALM Hub resources can be referenced using CURIEs (Compact URIs) instead of full URLs:
+
+```
+{namespace}:{type}:{name}@{version}
+```
+
+Examples:
+- `finos:interfaces:rest-api@1.0.0`
+- `finos:interfaces:grpc-service@2.0.0`
+- `finos:adrs:use-oauth2@3` (in control `adrs[]`)
+
+CURIEs are resolved by `calm validate` when `--calm-hub-url` or `--assets-path` is set. Use them in `definition-url` fields to reference Hub-stored interface definitions.
+
 ## Validation Rules
 
 1. Choose exactly ONE approach per interface

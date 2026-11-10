@@ -353,6 +353,21 @@ The FINOS community creates Standards for common financial services use cases:
 - **Document Usage**: Provide clear examples and adoption guides
 - **Monitor Compliance**: Use validation to ensure Standards are followed
 
+## CURIE References
+
+CALM Hub resources can be referenced using CURIEs (Compact URIs) instead of full URLs:
+
+```
+{namespace}:{type}:{name}@{version}
+```
+
+Examples:
+- `finos:standards:tls-encryption@1.0.0`
+- `security:controls:encryption-at-rest@1.0.0` (in `requirement-url`)
+- `finos:adrs:use-oauth2@3` (in control `adrs[]`)
+
+CURIEs are resolved by `calm validate` when `--calm-hub-url` or `--assets-path` is set.
+
 ## Cross-References
 
 - **Control Creation**: See control creation tool for integrating Standards with controls

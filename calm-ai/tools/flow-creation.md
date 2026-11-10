@@ -213,6 +213,21 @@ Optional transition properties:
 5. `direction` must be either "source-to-destination" or "destination-to-source"
 6. All required properties must be present
 
+## CURIE References
+
+CALM Hub resources can be referenced using CURIEs (Compact URIs) instead of full URLs:
+
+```
+{namespace}:{type}:{name}@{version}
+```
+
+Examples:
+- `finos:flows:trade-settlement@1.0.0`
+- `finos:architectures:trading-system@1.0.0`
+- `finos:adrs:use-oauth2@3` (in control `adrs[]`)
+
+CURIEs are resolved by `calm validate` when `--calm-hub-url` or `--assets-path` is set.
+
 ## Best Practices
 
 - Use descriptive flow names that reflect the business process

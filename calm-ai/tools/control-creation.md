@@ -45,17 +45,32 @@ The complete control schema from the FINOS CALM v1.3 specification:
             "config": {
                 "type": "object",
                 "description": "Inline configuration of how the control requirement schema is met"
+            },
+            "status": {
+                "enum": ["compliant", "non-compliant"],
+                "description": "Compliance state. Absent means compliant."
+            },
+            "adrs": {
+                "type": "array",
+                "items": { "type": "string" },
+                "description": "ADR references justifying this control's configuration or deviation"
             }
         },
         "required": ["requirement-url"],
-        "oneOf": [
-            {
-                "required": ["config-url"]
-            },
-            {
-                "required": ["config"]
-            }
-        ]
+        "if": {
+            "properties": { "status": { "const": "non-compliant" } },
+            "required": ["status"]
+        },
+        "then": {
+            "required": ["adrs"],
+            "properties": { "adrs": { "type": "array", "minItems": 1 } }
+        },
+        "else": {
+            "oneOf": [
+                { "required": ["config-url"] },
+                { "required": ["config"] }
+            ]
+        }
     }
 }
 ```
@@ -279,10 +294,19 @@ Each requirement MUST have:
 
 - `requirement-url` (string) - Schema defining the control requirement
 
-Each requirement MUST have exactly ONE of:
+For a **compliant** control (status absent or `"compliant"`), exactly ONE of:
 
 - `config-url` (string) - External configuration file
 - `config` (object) - Inline configuration
+
+For a **non-compliant** control (`"status": "non-compliant"`):
+
+- `adrs` (array of strings, at least 1) - ADR references justifying the deviation. No config required.
+
+Optional on any requirement:
+
+- `status` - `"compliant"` or `"non-compliant"`. Absent means compliant.
+- `adrs` - ADR references (CURIEs or URLs) justifying the control's configuration or deviation
 
 ## Control Examples
 
@@ -354,15 +378,53 @@ Each requirement MUST have exactly ONE of:
 }
 ```
 
+**Non-Compliant Control with ADR Justification:**
+
+```json
+"controls": {
+    "encryption-at-rest": {
+        "description": "Data encryption requirements for storage tier",
+        "requirements": [
+            {
+                "requirement-url": "security:controls:encryption-at-rest@1.0.0",
+                "status": "non-compliant",
+                "adrs": ["finos:adrs:skip-encryption-cold-storage@1"]
+            }
+        ]
+    }
+}
+```
+
+In this example, the control is marked non-compliant with no config. The `adrs` array references the ADR that justifies the deviation using a CURIE. See **adr-creation.md** for ADR authoring.
+
+## CURIE References
+
+CALM Hub resources can be referenced using CURIEs (Compact URIs) instead of full URLs:
+
+```
+{namespace}:{type}:{name}@{version}
+```
+
+| Resource | CURIE example |
+|----------|---------------|
+| Architecture | `finos:architectures:trading-system@1.0.0` |
+| Pattern | `finos:patterns:api-gateway@2.0.0` |
+| Control requirement | `security:controls:encryption-at-rest@1.0.0` |
+| ADR | `finos:adrs:use-oauth2@3` |
+
+CURIEs are resolved by `calm validate` when `--calm-hub-url` or `--assets-path` is set.
+
 ## Validation Rules
 
 1. Control names must match pattern `^[a-zA-Z0-9-]+$` (alphanumeric and hyphens only)
 2. Each control must have `description` and `requirements` properties
 3. Requirements array must have at least one control-detail object
 4. Each control-detail must have `requirement-url`
-5. Each control-detail must have either `config-url` OR `config` (not both)
-6. Requirement URLs should be accessible schema definitions
-7. External config URLs should be accessible configuration files
+5. A compliant requirement (status absent or `"compliant"`) must have either `config-url` OR `config` (not both)
+6. A non-compliant requirement (`"status": "non-compliant"`) must have `adrs` with at least one entry. No config is required
+7. Requirement URLs should be accessible schema definitions
+8. External config URLs should be accessible configuration files
+9. ADR references should be CURIEs or canonical URLs pointing to existing ADRs
 
 ## Best Practices
 
@@ -377,6 +439,7 @@ Each requirement MUST have exactly ONE of:
 
 ## Cross-References
 
+- **ADR Creation**: See ADR creation tool for authoring ADRs that justify non-compliant controls
 - **Standards Creation**: See standards creation tool for creating requirement Standards that controls reference
 - **Node Creation**: Understand how controls are applied to individual nodes
 - **Flow Creation**: Learn how controls work with business processes and flows
