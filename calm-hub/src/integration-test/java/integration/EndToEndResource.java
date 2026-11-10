@@ -10,6 +10,7 @@ import org.finos.calm.migration.steps.MongoArchitectureVersionSplitStep;
 import org.finos.calm.migration.steps.MongoControlVersionSplitStep;
 import org.finos.calm.migration.steps.MongoDocumentIndexStep;
 import org.finos.calm.migration.steps.MongoIndexInitializationStep;
+import org.finos.calm.migration.steps.MongoAdrSlugMigrationStep;
 import org.finos.calm.migration.steps.MongoAdrVersionSplitStep;
 import org.finos.calm.migration.steps.MongoFlowVersionSplitStep;
 import org.finos.calm.migration.steps.MongoInterfaceVersionSplitStep;
@@ -83,6 +84,8 @@ public class EndToEndResource implements QuarkusTestResourceLifecycleManager {
             new MongoInterfaceVersionSplitStep(database).transitionIndexes();
             new MongoTimelineVersionSplitStep(database).transitionIndexes();
             new MongoAdrVersionSplitStep(database).transitionIndexes();
+            // Unique (namespace, slug): MongoAdrStore relies on it to keep ADR slugs unique.
+            new MongoAdrSlugMigrationStep(database).createIndexes();
             // Not a version split — layout was never in the header/version shape to begin
             // with — but the same principle applies: without this, MongoIndexInitializationStep
             // creates no layouts index at all (it was deliberately removed from that step's

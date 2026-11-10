@@ -92,9 +92,12 @@ export {
     type CalmHubOptions,
     type NarrativeDocumentRequest,
     type NarrativeDocumentVersion,
+    type HubAdrDocument,
+    type HubAdrWriteResult,
     type ResourceType,
     type ResourceChangeType,
-    isValidResourceType
+    isValidResourceType,
+    hasIntegerRevisions
 } from './hub/calm-hub-client.js';
 export {
     constructDocumentId,

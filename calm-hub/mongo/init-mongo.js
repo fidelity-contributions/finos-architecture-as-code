@@ -79,6 +79,8 @@ function seedVersionedResource(groupedByNamespace, headerCollection, versionColl
                 [idField]: entry[idField],
                 name: entry.name,
                 description: entry.description,
+                // ADR only: the immutable slug the name-based API addresses it by.
+                ...(entry.slug ? { slug: entry.slug } : {}),
                 // NumberInt, not a plain JS number: a double here reads back as a Double and
                 // the store's getInteger call fails on it. Counts the collapsed set, so the
                 // header can never advertise more versions than there are documents.
@@ -230,7 +232,7 @@ logSection("Schema baseline");
 // Raise LATEST_SCHEMA_VERSION whenever a migration step is added, and seed that step's
 // target shape below. Document shape must match MongoSchemaVersionStore: _id
 // "schemaVersion", int version, in the calm collection.
-const LATEST_SCHEMA_VERSION = 16;
+const LATEST_SCHEMA_VERSION = 17;
 const unique = { unique: true };
 
 const existingSchemaVersion = db.calm.findOne({ _id: "schemaVersion" });
@@ -281,6 +283,9 @@ if (isEmptyDatabase) {
     db.timelineVersions.createIndex({ namespace: 1, timelineId: 1, version: 1 }, unique);
     db.adrs.createIndex({ namespace: 1, adrId: 1 }, unique);
     db.adrVersions.createIndex({ namespace: 1, adrId: 1, version: 1 }, unique);
+    // Mirrors MongoAdrSlugMigrationStep. Partial, so a header without a slug never collides.
+    db.adrs.createIndex({ namespace: 1, slug: 1 },
+        { unique: true, partialFilterExpression: { slug: { $type: "string" } } });
     db.layouts.createIndex({ namespace: 1, architectureId: 1 }, unique);
     db.pattern_layouts.createIndex({ namespace: 1, patternId: 1 }, unique);
     db.documents.createIndex({ namespace: 1, documentType: 1, documentId: 1 }, unique);
@@ -6690,6 +6695,8 @@ if (isEmptyDatabase && db.adrs.countDocuments() === 0) {
                     // seedVersionedResource writes this onto the header the same way it
                     // already does for every other type's `name`.
                     name: 'Example ADR',
+                    // AdrSlugs.derive of revisions[1].title, as MongoAdrSlugMigrationStep writes it.
+                    slug: 'example-adr',
                     revisions: {
                         1: {
                             title: 'Example ADR',
@@ -6775,6 +6782,7 @@ if (isEmptyDatabase && db.adrs.countDocuments() === 0) {
                     // Denormalized copy of revisions[1].title — see
                     // calm-hub/decisions/0006-denormalize-adr-title-onto-header.md.
                     name: 'Use Load Balancer for Traffic Distribution',
+                    slug: 'use-load-balancer-for-traffic-distribution',
                     revisions: {
                         1: {
                             title: 'Use Load Balancer for Traffic Distribution',
