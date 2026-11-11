@@ -59,6 +59,7 @@ export interface ValidationContext {
     pattern?: object;
     timeline?: object;
     adr?: object;
+    adrSchema?: object;
     mode: ValidationMode;
     schemaDirectory?: SchemaDirectory;
     /**

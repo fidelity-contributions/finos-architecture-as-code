@@ -44,7 +44,7 @@ export class JsonSchemaValidationRule implements ValidationRule {
         case 'timeline':
             return this.runTimeline(context, logger);
         case 'adr':
-            return this.runDocumentAgainstSchema(context.adr!, 'adr', context, logger);
+            return this.runDocumentAgainstSchema(context.adr!, 'adr', context.adrSchema!, context, logger);
         }
     }
 
@@ -136,12 +136,11 @@ export class JsonSchemaValidationRule implements ValidationRule {
     }
 
     private async runTimeline(context: ValidationContext, logger: Logger): Promise<RuleResult> {
-        return this.runDocumentAgainstSchema(context.timeline!, 'timeline', context, logger);
+        return this.runDocumentAgainstSchema(context.timeline!, 'timeline', context.pattern!, context, logger);
     }
 
-    private async runDocumentAgainstSchema(document: object, source: string, context: ValidationContext, logger: Logger): Promise<RuleResult> {
-        // A compile failure here intentionally propagates (matches the historical timeline flow).
-        const jsonSchemaValidator = new JsonSchemaValidator(context.schemaDirectory!, context.pattern!, context.debug);
+    private async runDocumentAgainstSchema(document: object, source: string, schema: object, context: ValidationContext, logger: Logger): Promise<RuleResult> {
+        const jsonSchemaValidator = new JsonSchemaValidator(context.schemaDirectory!, schema, context.debug);
         await jsonSchemaValidator.initialize();
 
         const schemaErrors = jsonSchemaValidator.validate(document);

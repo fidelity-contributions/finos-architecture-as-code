@@ -74,7 +74,7 @@ export async function validateAdr(
     logger = initLogger(debug, 'calm-validate');
     const engine = createDefaultValidationEngine();
     const references = new CachingTrackingResolver(new SchemaDirectoryReferenceResolver(schemaDirectory));
-    return engine.validate({ mode: 'adr', adr, pattern: adrSchema, schemaDirectory, references, debug, engine });
+    return engine.validate({ mode: 'adr', adr, adrSchema, schemaDirectory, references, debug, engine });
 }
 
 /**
