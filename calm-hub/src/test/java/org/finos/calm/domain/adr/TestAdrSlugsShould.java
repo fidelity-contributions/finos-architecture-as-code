@@ -25,7 +25,10 @@ class TestAdrSlugsShould {
                 Arguments.of("Use Kafka (v3)", "use-kafka-v3"),
                 Arguments.of("  ", null),
                 Arguments.of("2024", null),
-                Arguments.of("日本語", null)
+                Arguments.of("日本語", null),
+                Arguments.of("Décision d'architecture", "decision-d-architecture"),
+                Arguments.of("Über die Architektur", "uber-die-architektur"),
+                Arguments.of("Migración a la nube", "migracion-a-la-nube")
         );
     }
 

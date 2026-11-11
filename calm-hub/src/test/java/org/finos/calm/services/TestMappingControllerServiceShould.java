@@ -95,7 +95,7 @@ class TestMappingControllerServiceShould {
 
         assertThat(service.getVersionsForMapping(adrMapping()), contains("1", "2"));
         assertThat(service.getResourceJsonForVersion(adrMapping(), "2"),
-                is("{\"slug\":\"use-kafka\",\"title\":\"Use Kafka\",\"status\":\"accepted\"}"));
+                is("{\"$id\":\"/calm/namespaces/finos/adrs/use-kafka/versions/2\",\"slug\":\"use-kafka\",\"title\":\"Use Kafka\",\"status\":\"accepted\"}"));
     }
 
     @Test

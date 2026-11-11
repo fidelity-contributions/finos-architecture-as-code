@@ -1,5 +1,6 @@
 package org.finos.calm.domain.adr;
 
+import java.text.Normalizer;
 import java.util.Locale;
 import java.util.regex.Pattern;
 
@@ -26,7 +27,8 @@ public final class AdrSlugs {
         if (title == null) {
             return null;
         }
-        String slug = title.toLowerCase(Locale.ROOT);
+        String slug = Normalizer.normalize(title.toLowerCase(Locale.ROOT), Normalizer.Form.NFD);
+        slug = slug.replaceAll("\\p{M}", "");
         slug = slug.replaceAll("[^\\x00-\\x7F]", "");
         slug = slug.replaceAll("[^a-z0-9]", "-");
         slug = trimHyphens(slug);

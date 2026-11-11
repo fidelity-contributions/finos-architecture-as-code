@@ -1300,8 +1300,8 @@ export async function runPushAdr(options: PushAdrOptions): Promise<void> {
 
 /** Puts `$id` and `slug` after `$schema`, so a new `$id` does not go to the end of the file. */
 function withAdrIdentity(adr: HubAdrDocument, result: AdrPushResult): Record<string, unknown> {
-    const { $schema, ...rest } = adr;
-    return { ...($schema === undefined ? {} : { $schema }), ...rest, $id: result.location, slug: result.slug };
+    const { $schema, $id: _oldId, slug: _oldSlug, ...rest } = adr as Record<string, unknown>;
+    return { ...($schema === undefined ? {} : { $schema }), $id: result.location, slug: result.slug, ...rest };
 }
 
 /**

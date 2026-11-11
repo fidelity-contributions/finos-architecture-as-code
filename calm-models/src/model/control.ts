@@ -25,8 +25,8 @@ export class CalmControlDetail implements CalmAdaptable<CalmControlDetailSchema,
     toCanonicalSchema(): CalmControlDetailCanonicalModel {
         const config = (this.configUrl && this.configUrl.isResolved) ? this.configUrl.value : this.config;
         return {
-            'requirement-url': this.requirement.reference,
             ...config,
+            'requirement-url': this.requirement.reference,
             ...(this.originalJson.status !== undefined ? { status: this.status } : {}),
             ...(this.adrs !== undefined ? { adrs: this.adrs } : {})
         };

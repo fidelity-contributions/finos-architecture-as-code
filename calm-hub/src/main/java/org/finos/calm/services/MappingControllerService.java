@@ -236,9 +236,10 @@ public class MappingControllerService {
                         .build();
                 yield timelineStore.getTimelineForVersion(timeline);
             }
-            case ADR -> adrDocumentMapper.toDocument(
-                    adrStore.getAdrForVersion(mapping.getNamespace(), mapping.getNumericId(), version).getAdr(),
-                    null, mapping.getCustomId());
+            case ADR -> {
+                Adr adr = adrStore.getAdrForVersion(mapping.getNamespace(), mapping.getNumericId(), version).getAdr();
+                yield adrDocument(mapping.getNamespace(), mapping.getCustomId(), version, adr);
+            }
         };
     }
 
