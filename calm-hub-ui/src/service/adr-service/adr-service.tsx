@@ -34,7 +34,7 @@ export class AdrService {
             })
             .catch((error) => {
                 const errorMessage = `Error fetching ADR summaries for namespace ${namespace}:`;
-                console.error('Error fetching ADR summaries for namespace %s:', namespace, error);
+                console.error('%s', errorMessage, error);
                 return Promise.reject(new Error(errorMessage));
             });
     }
@@ -51,7 +51,7 @@ export class AdrService {
             .then((res) => (Array.isArray(res.data?.values) ? res.data.values : []))
             .catch((error) => {
                 const errorMessage = `Error fetching revisions for ADR ID ${adrID}:`;
-                console.error('Error fetching revisions for ADR ID %s:', adrID, error);
+                console.error('%s', errorMessage, error);
                 return Promise.reject(new Error(errorMessage));
             });
     }
@@ -68,7 +68,7 @@ export class AdrService {
             .then((res) => res.data)
             .catch((error) => {
                 const errorMessage = `Error fetching adr for namespace ${namespace}, adr ID ${adrID}, revision ${revision}:`;
-                console.error('Error fetching adr for namespace %s, adr ID %s, revision %s:', namespace, adrID, revision, error);
+                console.error('%s', errorMessage, error);
                 return Promise.reject(new Error(errorMessage));
             });
     }
@@ -90,7 +90,7 @@ export class AdrService {
             })
             .catch((error) => {
                 const errorMessage = `Error resolving ADR slug ${slug} in namespace ${namespace}:`;
-                console.error('Error resolving ADR slug %s in namespace %s:', slug, namespace, error);
+                console.error('%s', errorMessage, error);
                 return Promise.reject(new Error(errorMessage));
             });
     }
@@ -107,7 +107,7 @@ export class AdrService {
             .then((res) => (Array.isArray(res.data?.values) ? res.data.values.map(String) : []))
             .catch((error) => {
                 const errorMessage = `Error fetching versions for ADR ${slug}:`;
-                console.error('Error fetching versions for ADR %s:', slug, error);
+                console.error('%s', errorMessage, error);
                 return Promise.reject(new Error(errorMessage));
             });
     }

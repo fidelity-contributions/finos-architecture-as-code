@@ -1,3 +1,4 @@
+import { parseCurie } from '@finos/calm-shared';
 import { LATEST_ADR_REVISION } from '../../../model/calm.js';
 
 export type AdrReferenceForm = 'canonical' | 'curie' | 'legacy';
@@ -15,8 +16,7 @@ export interface AdrReference {
 
 // /calm/namespaces/{ns}/adrs/{slug}[/versions/{revision}]
 const CANONICAL_ADR_PATH = /^\/calm\/namespaces\/([^/]+)\/adrs\/([^/]+)(?:\/versions\/([^/]+))?\/?$/;
-// {ns}:adrs:{slug}[@{revision}]
-const ADR_CURIE = /^([^\s:/@]+):adrs:([^\s:/@]+)(?:@([^\s:/@]+))?$/;
+// CURIE parsing delegated to @finos/calm-shared parseCurie; only adrs type accepted.
 // /api/calm/namespaces/{ns}/adrs/{id}[/revisions/{revision}]
 const LEGACY_ADR_PATH = /^\/api\/calm\/namespaces\/([^/]+)\/adrs\/(\d+)(?:\/revisions\/(\d+))?\/?$/;
 
@@ -35,12 +35,12 @@ function matchPath(path: string): AdrReference | null {
             form: 'canonical',
             namespace: decodeSegment(canonical[1]),
             id: decodeSegment(canonical[2]),
-            revision: canonical[3],
+            revision: canonical[3] ? decodeSegment(canonical[3]) : undefined,
         };
     }
     const legacy = path.match(LEGACY_ADR_PATH);
     if (legacy) {
-        return { form: 'legacy', namespace: legacy[1], id: legacy[2], revision: legacy[3] };
+        return { form: 'legacy', namespace: decodeSegment(legacy[1]), id: legacy[2], revision: legacy[3] };
     }
     return null;
 }
@@ -53,9 +53,9 @@ function matchPath(path: string): AdrReference | null {
 export function parseAdrReference(ref: string, hostname: string = window.location.hostname): AdrReference | null {
     const value = ref.trim();
 
-    const curie = value.match(ADR_CURIE);
-    if (curie) {
-        return { form: 'curie', namespace: curie[1], id: curie[2], revision: curie[3] };
+    const curie = parseCurie(value);
+    if (curie && curie.type === 'adrs') {
+        return { form: 'curie', namespace: curie.namespace, id: curie.slug, revision: curie.version };
     }
 
     if (value.startsWith('http://') || value.startsWith('https://')) {
@@ -113,4 +113,9 @@ export function toAdrAppRoute(url: string, hostname?: string): string {
     // A legacy link without a revision has always opened revision 1.
     const revision = ref.revision ?? (ref.form === 'legacy' ? '1' : LATEST_ADR_REVISION);
     return `/${encodeURIComponent(ref.namespace)}/adrs/${encodeURIComponent(ref.id)}/${encodeURIComponent(revision)}`;
+}
+
+/** Preferred identifier for an ADR summary: the slug when available, otherwise the numeric id. */
+export function adrSlugOrId(adr: { slug?: string; id: number }): string {
+    return adr.slug ?? adr.id.toString();
 }

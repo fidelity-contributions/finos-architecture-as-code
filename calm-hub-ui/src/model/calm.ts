@@ -52,6 +52,9 @@ export function isSlug(id: string): boolean {
     return !/^\d+$/.test(id);
 }
 
+/** Route segment that asks the ADR loader for the newest revision. */
+export const LATEST_ADR_REVISION = 'latest';
+
 /**
  * Summary returned from the API for ADR resources (title + status instead of name + description).
  */

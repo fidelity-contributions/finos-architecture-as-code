@@ -3,6 +3,7 @@ import { CalmService } from '../../../service/calm-service.js';
 import { InterfaceService } from '../../../service/interface-service.js';
 import { AdrService } from '../../../service/adr-service/adr-service.js';
 import { ResourceSummary } from '../../../model/calm.js';
+import { adrSlugOrId } from '../../../visualizer/components/reactflow/adr-utils.js';
 import { type TypeInUI } from '../tree-navigation/navigation-loaders.js';
 
 export interface NamespaceItem {
@@ -61,7 +62,7 @@ export function useNamespaceItems(namespace: string): { groups: NamespaceItemGro
                 { type: 'Standards', items: standards.map(summaryToItem) },
                 {
                     type: 'ADRs',
-                    items: adrs.map((a) => ({ id: a.slug ?? a.id.toString(), name: `${a.title} (${a.status})` })),
+                    items: adrs.map((a) => ({ id: adrSlugOrId(a), name: `${a.title} (${a.status})` })),
                 },
                 {
                     type: 'Interfaces',

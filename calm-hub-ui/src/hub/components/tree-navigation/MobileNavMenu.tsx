@@ -6,6 +6,7 @@ import { ControlService } from '../../../service/control-service.js';
 import { InterfaceService } from '../../../service/interface-service.js';
 import { AdrService } from '../../../service/adr-service/adr-service.js';
 import { ResourceSummary } from '../../../model/calm.js';
+import { adrSlugOrId } from '../../../visualizer/components/reactflow/adr-utils.js';
 import { pickLatestVersion } from '../../../model/version.js';
 import { ControlDetail } from '../../../model/control.js';
 import { NamespaceCounts, DomainControlCount } from '../../../model/counts.js';
@@ -153,7 +154,7 @@ export function MobileNavMenu({
             } else if (type === 'ADRs') {
                 adrService
                     .fetchAdrSummaries(namespace)
-                    .then((adrs) => finish(adrs.map((a) => ({ id: a.slug ?? a.id.toString(), name: `${a.title} (${a.status})` }))))
+                    .then((adrs) => finish(adrs.map((a) => ({ id: adrSlugOrId(a), name: `${a.title} (${a.status})` }))))
                     .catch(() => finish([]));
             } else {
                 const fetcher =
