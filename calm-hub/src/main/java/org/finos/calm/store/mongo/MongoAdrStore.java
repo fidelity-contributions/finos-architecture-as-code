@@ -107,6 +107,9 @@ public class MongoAdrStore implements AdrStore {
         objectMapper.registerModule(new JavaTimeModule());
     }
 
+    // N+1 query pattern: 1 for slugs, 1 for headers, then per ADR: 1 to list versions + 1 to
+    // fetch latest content. Acceptable because ADR count per namespace is typically small (tens,
+    // not thousands); a MongoDB aggregation pipeline would add complexity for marginal gain.
     @Override
     public List<NamespaceAdrSummary> getAdrsForNamespace(String namespace) throws NamespaceNotFoundException {
         namespaceStore.requireNamespace(namespace);

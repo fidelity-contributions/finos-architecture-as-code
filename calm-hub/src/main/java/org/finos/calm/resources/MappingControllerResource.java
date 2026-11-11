@@ -372,7 +372,8 @@ public class MappingControllerResource {
                     STRICT_SANITIZATION_POLICY.sanitize(namespace), e);
             return CalmResourceErrorResponses.invalidNamespaceResponse(namespace);
         } catch (PatternNotFoundException | ArchitectureNotFoundException | FlowNotFoundException
-                 | StandardNotFoundException | InterfaceNotFoundException | TimelineNotFoundException e) {
+                 | StandardNotFoundException | InterfaceNotFoundException | TimelineNotFoundException
+                 | AdrNotFoundException e) {
             return Response.status(Response.Status.NOT_FOUND)
                     .entity("Resource not found: " + STRICT_SANITIZATION_POLICY.sanitize(name)).build();
         } catch (Exception e) {
@@ -419,14 +420,19 @@ public class MappingControllerResource {
                     STRICT_SANITIZATION_POLICY.sanitize(namespace), e);
             return CalmResourceErrorResponses.invalidNamespaceResponse(namespace);
         } catch (PatternNotFoundException | ArchitectureNotFoundException | FlowNotFoundException
-                 | StandardNotFoundException | InterfaceNotFoundException | TimelineNotFoundException e) {
+                 | StandardNotFoundException | InterfaceNotFoundException | TimelineNotFoundException
+                 | AdrNotFoundException e) {
             return Response.status(Response.Status.NOT_FOUND)
                     .entity("Resource not found: " + STRICT_SANITIZATION_POLICY.sanitize(name)).build();
         } catch (PatternVersionNotFoundException | ArchitectureVersionNotFoundException
                  | FlowVersionNotFoundException | StandardVersionNotFoundException
-                 | InterfaceVersionNotFoundException | TimelineVersionNotFoundException e) {
+                 | InterfaceVersionNotFoundException | TimelineVersionNotFoundException
+                 | AdrRevisionNotFoundException e) {
             return Response.status(Response.Status.NOT_FOUND)
                     .entity("Invalid version provided: " + version).build();
+        } catch (AdrParseException e) {
+            return Response.status(Response.Status.BAD_REQUEST)
+                    .entity("ADR parse error: " + STRICT_SANITIZATION_POLICY.sanitize(e.getMessage())).build();
         } catch (Exception e) {
             logger.error("Error retrieving resource [{}] version [{}] in namespace [{}]",
                     STRICT_SANITIZATION_POLICY.sanitize(name), STRICT_SANITIZATION_POLICY.sanitize(version),

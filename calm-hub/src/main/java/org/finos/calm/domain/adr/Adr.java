@@ -49,21 +49,6 @@ public class Adr {
             Status status,
             LocalDateTime creationDateTime,
             LocalDateTime updateDateTime,
-            String contextAndProblemStatement,
-            List<String> decisionDrivers,
-            List<Option> consideredOptions,
-            Decision decisionOutcome,
-            List<Link> links
-    ) {
-        this(title, status, creationDateTime, updateDateTime, null, null, null,
-                contextAndProblemStatement, decisionDrivers, consideredOptions, decisionOutcome, links);
-    }
-
-    public Adr(
-            String title,
-            Status status,
-            LocalDateTime creationDateTime,
-            LocalDateTime updateDateTime,
             LocalDate decisionDate,
             List<String> requesters,
             List<String> approvers,

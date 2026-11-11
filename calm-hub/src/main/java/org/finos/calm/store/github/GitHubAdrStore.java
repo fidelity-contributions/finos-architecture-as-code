@@ -252,6 +252,11 @@ public class GitHubAdrStore extends AbstractReadOnlyGitHubStore implements AdrSt
     /**
      * Every served ADR in the namespace with its slug, in registry (path) order. Reads each
      * file, since the slug can come from the content.
+     *
+     * Called once per public method. The service layer may chain several public methods for a
+     * single request (e.g. resolve-by-slug → get-latest → get-version-label), causing multiple
+     * full scans. Per-request caching would require threading state through the AdrStore interface;
+     * accepted for now because GitHub namespaces typically hold tens of ADRs, not thousands.
      */
     private List<AdrFile> adrFiles(String namespace) {
         Set<String> taken = new HashSet<>();
