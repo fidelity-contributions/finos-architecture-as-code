@@ -171,16 +171,16 @@ describe('promptForDocumentId', () => {
         expect(result.id).toBe('https://hub.example.com/calm/domains/security/controls/access-control/requirement/versions/1.0.0');
     });
 
-    it('asks only for a document id for adr documents, which have no CalmHub resource type', async () => {
-        queueAnswers([], ['my-doc']);
+    it('skips scope and resource-type prompts for adr documents', async () => {
+        queueAnswers([], ['https://hub.example.com', undefined, 'finos', 'use-oauth2']);
 
         const result = await promptForDocumentId({ documentType: 'adr' });
 
         expect(mocks.select).not.toHaveBeenCalled();
-        expect(mocks.input).toHaveBeenCalledTimes(1);
         expect(result).toEqual({
-            id: 'my-doc',
-            slug: 'my-doc',
+            id: 'https://hub.example.com/calm/namespaces/finos/adrs/use-oauth2/versions/1',
+            namespace: 'finos',
+            slug: 'use-oauth2',
         });
     });
 
