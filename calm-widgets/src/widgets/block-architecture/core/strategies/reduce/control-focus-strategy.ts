@@ -311,6 +311,10 @@ export class ControlFocusStrategy implements VisibilityFilterStrategy {
                         return true;
                     }
 
+                    if (Array.isArray(value) && value.some(v => typeof v === 'string' && v.toLowerCase().includes(criteriaLower))) {
+                        return true;
+                    }
+
                     if (value != null && typeof value !== 'object') {
                         if (String(value).toLowerCase().includes(criteriaLower)) {
                             return true;
