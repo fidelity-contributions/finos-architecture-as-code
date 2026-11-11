@@ -176,10 +176,10 @@ public class NitriteAdrStore implements AdrStore {
             slug = AdrSlugAllocator.allocate(adrMeta.getSlug(), adrMeta.getAdr().getTitle(), id,
                     candidate -> !taken.contains(candidate) && documentStore.createHeaderIfUnique(
                             namespace, id, headerTitle(adrMeta), null, Map.of(SLUG_FIELD, candidate)));
+            documentStore.createFirstVersion(namespace, id, String.valueOf(adrMeta.getRevision()), content);
         } finally {
             slugLock.unlock();
         }
-        documentStore.createFirstVersion(namespace, id, String.valueOf(adrMeta.getRevision()), content);
 
         LOG.info("Created ADR with ID {} and slug '{}' for namespace '{}'", id, slug, namespace);
         return new AdrMeta.AdrMetaBuilder(adrMeta).setId(id).setSlug(slug).build();
