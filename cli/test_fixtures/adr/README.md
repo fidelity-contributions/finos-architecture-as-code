@@ -1,3 +1,3 @@
 # ADR test fixtures
 
-`schema/adr.json` is a copy of the draft `calm/draft/adr-support/meta/adr.json`. The published `@finos/calm-schema` does not contain it yet, so the tests pass this folder with `--schema-directory`. Replace this copy with the released schema when it ships.
+`schema/adr.json` and `valid-adr.json` are copies of the same files in `shared/test_fixtures/adr/`. The CLI needs its own copy because vitest resolves relative to the test file. Replace both copies with the released schema when `@finos/calm-schema` ships `adr.json`.

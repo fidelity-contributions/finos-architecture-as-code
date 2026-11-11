@@ -1268,7 +1268,7 @@ export async function runPushAdr(options: PushAdrOptions): Promise<void> {
         const revisions = requestedSlug ? await client.getAdrRevisions(namespace, requestedSlug) : [];
         let result: AdrPushResult;
         if (requestedSlug && revisions.length > 0) {
-            const latestRevision = latestAdrRevision(revisions);
+            const latestRevision = latestAdrRevision(revisions)!;
             const latest = await client.getAdr(namespace, requestedSlug, latestRevision);
             if (adrContentEqual(adr, latest)) {
                 result = {
