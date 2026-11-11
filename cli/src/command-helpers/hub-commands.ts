@@ -219,7 +219,7 @@ export async function pushDocument(
     fileContent: string, 
     resourceType: ResourceType,
     changeType: ResourceChangeType,
-    options: PushOptions): Promise<PushDocumentResult> {
+    options: PushOptions): Promise<PushDocumentResult & { updatedContent: string }> {
 
     // allow changing of name/description if not already set.
     const name = options.name ?? metadata.name;
@@ -253,7 +253,7 @@ export async function pushDocument(
             const requestLabel = `push ${resourceType} ${options.file}`;
             if (isUnchangedFromPublished(localAtLatest, latest, mapping, requestLabel)) {
                 newDocumentMetadata.version = latestVersion;
-                return { action: 'skipped', metadata: newDocumentMetadata };
+                return { action: 'skipped', metadata: newDocumentMetadata, updatedContent: fileContent };
             }
             throw new HubCommandError(
                 0,
@@ -277,7 +277,7 @@ export async function pushDocument(
         fileContent = updateDocumentMetadata(fileContent, newDocumentMetadata);
         await client.createMappedResourceVersion(newDocumentMetadata, fileContent);
     }
-    return { action: 'created', metadata: newDocumentMetadata };
+    return { action: 'created', metadata: newDocumentMetadata, updatedContent: fileContent };
 }
 
 /**
@@ -357,7 +357,7 @@ export async function orchestratePush(options: PushOptions, resourceType: Resour
     const mapping = metadata.mapping;
 
     try {
-        const { action, metadata: documentMetadata } = await pushDocument(
+        const { action, metadata: documentMetadata, updatedContent } = await pushDocument(
             client,
             namespace,
             mapping,
@@ -366,11 +366,8 @@ export async function orchestratePush(options: PushOptions, resourceType: Resour
             resourceType,
             options.changeType ?? 'PATCH',
             options);
-        // Only rewrite the on-disk document when a new version was actually created; an unchanged
-        // document is left exactly as it is.
         if (action === 'created') {
-            const newDocument = updateDocumentMetadata(fileContent, documentMetadata);
-            await writeFile(options.file, newDocument, 'utf-8');
+            await writeFile(options.file, updatedContent, 'utf-8');
         }
         const result: PushResult = {
             status: action,
@@ -1308,7 +1305,7 @@ function withAdrIdentity(adr: HubAdrDocument, result: AdrPushResult): Record<str
  * The highest revision. ADR revisions are integers, so they are compared as numbers.
  * Other revision IDs (e.g. commit SHAs in GitHub storage mode) keep the ascending order that CALM Hub returns.
  */
-export function latestAdrRevision(revisions: string[]): string {
+export function latestAdrRevision(revisions: string[]): string | undefined {
     const ordered = revisions.every(revision => /^\d+$/.test(revision))
         ? [...revisions].sort((a, b) => Number(a) - Number(b))
         : revisions;
